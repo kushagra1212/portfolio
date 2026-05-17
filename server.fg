@@ -1,0 +1,85 @@
+/; =========================================================
+/;  The Career Compiler — served by Flow-Wing
+/;
+/;  This is a Flow-Wing program. The Flow-Wing compiler
+/;  (C++/LLVM) compiles/runs THIS file, and this program
+/;  then serves the portfolio over HTTP using the built-in
+/;  `vortex` module — exactly how flow-wing's own website
+/;  runs on Flow-Wing (see flowwing-explorer/flow-wing-website
+/;  in github.com/kushagra1212/Flow-Wing).
+/;
+/;  So "served by Flow-Wing" is literal, not metaphor.
+/;
+/;  Run (JIT):   flowwing-jit server.fg
+/;  Run (AOT):   flowwing server.fg -o career && ./career
+/;  Then open:   http://127.0.0.1:8080
+/; =========================================================
+
+bring vortex
+bring file
+bring text
+bring io
+bring Err
+
+fun fg_main() -> nthg {
+    var app: vortex::Server = new vortex::Server()
+    var err: Err::Result = app.listen(8080)
+    if Err::isErr(err) {
+        io::printErrorLogln("Failed to bind :8080 — is it already in use?", "red")
+        return :
+    }
+
+    const CURRENT_DIR: str = file::__DIR__ == "" ? "." : file::__DIR__
+    io::printLogln("The Career Compiler — served by Flow-Wing at http://127.0.0.1:8080", "cyan")
+
+    while true {
+        var req: vortex::Request, res: vortex::Response = app.accept()
+        if req == null {
+            continue
+        }
+
+        var method: str = req.getMethod()
+        var path: str = req.getPath()
+        var pathAsText: text::Text = new text::Text(path)
+
+        /; === GET / -> the portfolio itself ===
+        if method == "GET" && path == "/" {
+            var indexPath: str = CURRENT_DIR + "/index.html"
+            var content: str, rerr: Err::Result = file::readText(indexPath)
+            if Err::isErr(rerr) {
+                res.status(500).header("Content-Type", "text/html").send("<h1>Missing index.html</h1>")
+            } else {
+                res.status(200).header("Content-Type", "text/html; charset=utf-8").send(content)
+            }
+        }
+        /; === GET /assets/* -> css / js / icons (correct MIME) ===
+        else if method == "GET" && pathAsText.startsWith("/assets/") {
+            var assetPath: str = CURRENT_DIR + pathAsText.get()
+            var contentType: str = "application/octet-stream"
+            if pathAsText.endsWith(".css") {
+                contentType = "text/css; charset=utf-8"
+            } else if pathAsText.endsWith(".js") {
+                contentType = "text/javascript; charset=utf-8"
+            } else if pathAsText.endsWith(".svg") {
+                contentType = "image/svg+xml"
+            } else if pathAsText.endsWith(".png") {
+                contentType = "image/png"
+            } else if pathAsText.endsWith(".webmanifest") {
+                contentType = "application/manifest+json"
+            } else if pathAsText.endsWith(".ico") {
+                contentType = "image/x-icon"
+            }
+            res.status(200).sendStaticFile(assetPath, contentType)
+        }
+        /; === GET /career.fg -> the Flow-Wing source, in the open ===
+        else if method == "GET" && (path == "/career.fg" || path == "/server.fg") {
+            res.status(200).sendStaticFile(CURRENT_DIR + path, "text/plain; charset=utf-8")
+        }
+        /; === everything else ===
+        else {
+            res.status(404).header("Content-Type", "text/html").send("<h1>404 — not a route in this build</h1>")
+        }
+    }
+}
+
+fg_main()

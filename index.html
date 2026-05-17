@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" data-state="blue">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kushagra Rathore — Full-Stack Engineer · The Career Compiler</title>
+<meta name="description" content="Kushagra Rathore — Full-Stack Engineer, author of the Flow-Wing language. A zero-dependency portfolio served by Flow-Wing itself (server.fg + vortex)." />
+<meta name="author" content="Kushagra Rathore" />
+<meta name="theme-color" content="#0B0E13" />
+<meta property="og:title" content="Kushagra Rathore — The Career Compiler" />
+<meta property="og:description" content="Full-Stack Engineer. Built his own language (Flow-Wing, C++/LLVM). This portfolio is served by it — server.fg." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="Kushagra Rathore — The Career Compiler" />
+<meta name="twitter:description" content="Full-Stack Engineer. Built his own language (Flow-Wing, C++/LLVM). This portfolio is served by it — server.fg." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0E13'/%3E%3Ctext x='50%25' y='54%25' font-family='ui-monospace,monospace' font-size='34' fill='%2336E0A0' text-anchor='middle' dominant-baseline='middle'%3E%26gt;_%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+
+<a class="skip" href="#boot">skip to content</a>
+
+<!-- WebGL/Canvas AST node-graph background -->
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanline" aria-hidden="true"></div>
+
+<!-- Left compiler-pass progress rail -->
+<aside class="rail" aria-hidden="true">
+  <div class="rail-track"><div class="rail-fill" id="railFill"></div></div>
+  <ol class="rail-stages" id="railStages">
+    <li data-target="boot"><span>00</span> src</li>
+    <li data-target="lex"><span>01</span> lex</li>
+    <li data-target="parse"><span>02</span> ast</li>
+    <li data-target="analysis"><span>03</span> static</li>
+    <li data-target="opt"><span>04</span> opt</li>
+    <li data-target="repl"><span>05</span> jit</li>
+    <li data-target="codegen"><span>06</span> out</li>
+  </ol>
+</aside>
+
+<!-- Top status bar -->
+<header class="topbar">
+  <div class="brand"><span class="prompt">&gt;_</span> kushagra.fg</div>
+  <nav class="topnav">
+    <a href="#parse">projects</a>
+    <a href="#opt">experience</a>
+    <a href="#repl">repl</a>
+    <a href="#codegen">contact</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============ 00 · SOURCE / HERO ============ -->
+<section class="stage hero" id="boot">
+  <div class="hero-grid">
+    <div class="hero-terminal" id="bootTerminal" role="img" aria-label="Compiler boot sequence">
+      <div class="term-bar"><i></i><i></i><i></i><span>flowwing — career build</span></div>
+      <pre class="term-body" id="bootLog" aria-hidden="true"></pre>
+    </div>
+    <div class="hero-copy">
+      <p class="kicker">// full-stack engineer · author of the Flow-Wing language</p>
+      <h1 class="title">
+        <span class="line">Kushagra</span>
+        <span class="line">Rathore</span>
+      </h1>
+      <p class="lede">
+        I ship products end-to-end. When the tooling got in my way, I
+        <strong>built my own language</strong> — and this page is
+        <a class="lede-link" href="https://flowwing.frii.site/" target="_blank" rel="noopener">served by it</a>.
+      </p>
+      <p class="hero-meta">
+        <b id="yrsExp">—</b> full-time experience <span class="muted-note">(post-internship)</span>
+        <span class="dot-sep">·</span> full-stack &amp; systems
+      </p>
+      <div class="hero-cta">
+        <a href="#repl" class="btn btn-primary">Open the REPL ↵</a>
+        <a href="#parse" class="btn btn-ghost">Read the AST ↓</a>
+        <span class="avail"><i></i> open to work</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint" aria-hidden="true">scroll to compile</div>
+</section>
+
+<!-- ============ 01 · LEXER / SKILLS ============ -->
+<section class="stage stage--tight" id="lex">
+  <div class="stage-head stage-head--tight">
+    <span class="stage-no">01</span>
+    <h2>Lexer<span class="caret">_</span></h2>
+    <p class="stage-sub">the stack, tokenized — grouped by token class</p>
+  </div>
+  <div class="token-stream" id="tokenStream"></div>
+</section>
+
+<!-- ============ 02 · PARSER / PROJECTS (AST) ============ -->
+<section class="stage" id="parse">
+  <div class="stage-head">
+    <span class="stage-no">02</span>
+    <h2>Parser<span class="caret">_</span></h2>
+    <p class="stage-sub">building the AST — projects, as nodes. Expand a node to descend.</p>
+  </div>
+
+  <div class="ast" id="ast">
+
+    <article class="node node-root" data-tilt>
+      <header>
+        <span class="node-kind">FeaturedDecl</span>
+        <h3>Flow-Wing — a programming language</h3>
+        <span class="node-tag">C++ · LLVM</span>
+      </header>
+      <p>Experimental language blending static + dynamic typing. Custom Lexer, Parser, IR. <b>AOT &amp; JIT</b> compilers, a REPL, garbage collection, modules, OOP. Full <b>LSP</b> for VS Code + build servers. Actively versioned<span id="fgVer" class="fg-ver"></span>, with large multi-file changes across the compiler.</p>
+      <ul class="node-chips"><li>Lexer</li><li>Parser</li><li>IR</li><li>AOT</li><li>JIT</li><li>REPL</li><li>GC</li><li>LSP</li><li>GTest</li></ul>
+      <footer><span class="node-links"><a href="https://flowwing.frii.site/" target="_blank" rel="noopener">website ↗</a><a href="https://github.com/kushagra1212/Flow-Wing" target="_blank" rel="noopener">github ↗</a></span><span>this site is served by it · server.fg</span></footer>
+    </article>
+
+    <div class="ast-branch">
+      <article class="node" data-tilt>
+        <header><span class="node-kind">AppDecl</span><h3>Foundo — AI lost &amp; found</h3><span class="node-tag">React Native</span></header>
+        <p>Solo, production Android app. AI auto-matching of lost↔found reports, real-time chat over <b>WebSockets</b>, free OSS map via WebView (zero Google Maps cost). Backed by Node/Express, AWS RDS MySQL + S3, Docker. Tested with Jest + Detox E2E.</p>
+        <ul class="node-chips"><li>RN/Expo</li><li>Node</li><li>Express</li><li>MySQL</li><li>S3</li><li>Docker</li><li>WebSockets</li><li>Detox</li></ul>
+        <footer><a href="https://github.com/kushagra1212/foundo-app" target="_blank" rel="noopener">github ↗</a><span>0 → mobile, shipped</span></footer>
+      </article>
+
+      <article class="node" data-tilt>
+        <header><span class="node-kind">AppDecl</span><h3>Eimentum — social platform</h3><span class="node-tag">MERN</span></header>
+        <p>Full social network: profiles, friend graph, disappearing stories, real-time messaging. MongoDB · Express · React · Node, Redux state, <b>Socket.io</b>, JWT + Bcrypt stateless auth. Separate chat server.</p>
+        <ul class="node-chips"><li>MongoDB</li><li>Express</li><li>React</li><li>Node</li><li>Redux</li><li>Socket.io</li><li>JWT</li></ul>
+        <footer><span>frontend + backend + chat server</span></footer>
+      </article>
+
+      <article class="node" data-tilt>
+        <header><span class="node-kind">DeclList</span><h3>+ more</h3><span class="node-tag">side quests</span></header>
+        <p><b>AnimeHub</b> — content discovery &amp; cataloging. <b>Coin-Tracker-Interactive</b> — live crypto metrics. <b>YouTube Downloader</b> — multi-format, React. <b>Voice News</b> — voice-driven news portal.</p>
+        <ul class="node-chips"><li>AnimeHub</li><li>Coin-Tracker</li><li>YT-DL</li><li>Voice-News</li></ul>
+        <footer><a href="https://github.com/kushagra1212" target="_blank" rel="noopener">all repos ↗</a><span>type <code>projects</code> in the REPL</span></footer>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 · STATIC ANALYSIS / COMPETITIVE ============ -->
+<section class="stage stage--quiet" id="analysis">
+  <div class="stage-head stage-head--quiet">
+    <span class="stage-no">03</span>
+    <h2 class="h2--quiet">Static Analysis<span class="caret">_</span></h2>
+    <p class="stage-sub">an earlier chapter — competitive programming. Not active now; kept for the record.</p>
+  </div>
+  <p class="analysis-quiet">
+    <span>CodeChef <b>1908</b> · 4★</span>
+    <span>LeetCode <b>1851</b></span>
+    <span><b>1,600+</b> solved</span>
+    <span><b>#38</b> global · CookOff ’21</span>
+    <span class="dim">CP mentor (Google DSC) · CodeChef problem-setter — c. 2021–22</span>
+  </p>
+</section>
+
+<!-- ============ 04 · OPTIMIZER / EXPERIENCE + IMPACT ============ -->
+<section class="stage" id="opt">
+  <div class="stage-head">
+    <span class="stage-no">04</span>
+    <h2>Optimizer<span class="caret">_</span></h2>
+    <p class="stage-sub">the result, up front — hover any pass to see how it was done.</p>
+  </div>
+
+  <div class="passes" id="passes">
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big" data-count="11" data-prefix="−" data-suffix="%">0</span><i>lower cloud bill</i></div>
+      <div class="pass-detail">
+        <span class="co">@ Badho · how</span>
+        <p>Zero-downtime <b>blue-green</b> migration · <code>pg_repack</code> on bloated tables · AWS <b>Athena/S3</b> archive for historical events.</p>
+      </div>
+    </div>
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big" data-count="85" data-prefix="−" data-suffix="%">0</span><i>faster for every user</i></div>
+      <div class="pass-detail">
+        <span class="co">@ DocsUp · how · internship</span>
+        <p>Full <b>API restructuring</b>, Admin Panel redesign, major bug kills on houseofplug.com.</p>
+      </div>
+    </div>
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big" data-count="35" data-prefix="−" data-suffix="%">0</span><i>smaller app to download</i></div>
+      <div class="pass-detail">
+        <span class="co">@ Badho · how</span>
+        <p>React Native upgrades · <b>MMKV</b> sub-ms secure storage · <b>RevoPush</b> background OTA.</p>
+      </div>
+    </div>
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big big--word">gone</span><i>GraphQL CPU bottleneck</i></div>
+      <div class="pass-detail">
+        <span class="co">@ Badho · how</span>
+        <p>Untracked 40% redundant tables · pruned <b>millions</b> of stale logs · short-circuited the Rules Engine.</p>
+      </div>
+    </div>
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big big--word">0 lost</span><i>analytics at 1M+/day</i></div>
+      <div class="pass-detail">
+        <span class="co">@ Badho · how</span>
+        <p>Meta + Google Ads <b>CAPI</b> · automated intraday backups + unified queries beating BigQuery’s 1M/day cap.</p>
+      </div>
+    </div>
+
+    <div class="pass" data-pass tabindex="0">
+      <div class="pass-num"><span class="big big--word">automated</span><i>catalogue + invoicing</i></div>
+      <div class="pass-detail">
+        <span class="co">@ Badho · how</span>
+        <p><b>TypeSense</b> catalogue matching · multi-page invoice ingestion via <b>Mistral OCR</b> · auth → Azure Functions (Datadog-secured OTP).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="role-now">
+    <span class="role-badge">● current</span>
+    <div class="role-main">
+      <b>Badho Technologies</b>
+      <span>Full-Stack Engineer</span>
+    </div>
+    <i>Jul 2024 — Present · Gurugram</i>
+  </div>
+
+  <p class="role-earlier-label">earlier — internships &amp; education</p>
+  <div class="timeline timeline--quiet">
+    <div class="tl"><b>Badho Technologies</b><span>Full-Stack Intern</span><i>Jan 2024 — Jun 2024</i></div>
+    <div class="tl"><b>BuyProperly</b><span>Full-Stack Intern · HubSpot, Google Sign-In, Recoil</span><i>Jun 2022 — Sep 2022 · Remote, Toronto</i></div>
+    <div class="tl"><b>DocsUp Pvt Ltd</b><span>Full-Stack Intern</span><i>Oct 2021 — Jan 2022 · Delhi</i></div>
+    <div class="tl"><b>MediCaps University</b><span>B.Tech CSE · CGPA 9.35</span><i>Graduated May 2024 · Indore</i></div>
+  </div>
+</section>
+
+<!-- ============ 05 · JIT / REPL (the room) ============ -->
+<section class="stage repl-stage" id="repl">
+  <canvas id="rain" aria-hidden="true"></canvas>
+  <div class="stage-head">
+    <span class="stage-no">05</span>
+    <h2>JIT &amp; REPL<span class="caret">_</span></h2>
+    <p class="stage-sub">this is real. type a command. <code>help</code> to start. ↑/↓ history · Tab completes.</p>
+  </div>
+
+  <div class="ide" id="ide">
+    <div class="ide-bar">
+      <i></i><i></i><i></i>
+      <span class="ide-file">kushagra@flowwing: ~/career</span>
+      <span class="ide-meta"><span id="ideVer"></span>jit</span>
+    </div>
+    <div class="ide-screen" id="replOut" tabindex="0" aria-live="polite"></div>
+    <div class="ide-input">
+      <span class="ps1">kushagra<i class="sep">@</i>flowwing<i class="sep">:</i>~$</span>
+      <input id="replIn" autocomplete="off" autocapitalize="off" spellcheck="false"
+             aria-label="REPL command input" placeholder="help" />
+    </div>
+  </div>
+  <p class="repl-tip" id="replTip">tip: try <code>whoami</code>, <code>projects</code>, <code>run</code>, <code>sudo hire</code></p>
+</section>
+
+<!-- ============ 06 · CODEGEN / CONTACT ============ -->
+<section class="stage codegen" id="codegen">
+  <div class="stage-head">
+    <span class="stage-no">06</span>
+    <h2>Codegen<span class="caret">_</span></h2>
+    <p class="stage-sub">emitting executable — let’s ship something together</p>
+  </div>
+
+  <canvas id="emitParticles" aria-label="kushagra.fg — emitted binary" role="img"></canvas>
+
+  <div class="emit">
+    <pre class="emit-log" id="emitLog" aria-hidden="true"></pre>
+    <div class="emit-links">
+      <a class="emit-link" href="mailto:kushagrarathore002@gmail.com">
+        <b>email</b><span>kushagrarathore002@gmail.com</span>
+      </a>
+      <a class="emit-link" href="https://drive.google.com/file/d/17zyixC8Zl0CulGMdi2onaBDnd5dJWuov/view?usp=sharing" target="_blank" rel="noopener">
+        <b>résumé</b><span>view PDF ↗</span>
+      </a>
+      <a class="emit-link" href="tel:+919755912802">
+        <b>phone</b><span>+91 97559 12802</span>
+      </a>
+      <a class="emit-link" href="https://github.com/kushagra1212" target="_blank" rel="noopener">
+        <b>github</b><span>@kushagra1212 ↗</span>
+      </a>
+      <a class="emit-link" href="https://www.linkedin.com/in/kushagra1212" target="_blank" rel="noopener" data-verify>
+        <b>linkedin</b><span>in/kushagra1212 ↗</span>
+      </a>
+      <a class="emit-link" href="https://leetcode.com/u/kushagra1212" target="_blank" rel="noopener" data-verify>
+        <b>leetcode</b><span>1851 · solve ↗</span>
+      </a>
+      <a class="emit-link" href="https://medium.com/@kushagrarathore002" target="_blank" rel="noopener">
+        <b>medium</b><span>articles ↗</span>
+      </a>
+    </div>
+    <p class="emit-foot">
+      <span class="ok">●</span> build succeeded · 0 errors · target: <em>your team</em>
+    </p>
+  </div>
+
+  <footer class="site-foot">
+    <span>served by <a href="https://github.com/kushagra1212/Flow-Wing" target="_blank" rel="noopener">Flow-Wing</a> — server.fg · vortex · zero deps</span>
+    <span>© <span id="yr"></span> Kushagra Rathore</span>
+  </footer>
+</section>
+
+</main>
+
+<script src="assets/bg.js"></script>
+<script src="assets/pipeline.js"></script>
+<script src="assets/compiler.js"></script>
+</body>
+</html>

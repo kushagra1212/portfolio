@@ -1,0 +1,55 @@
+/; =========================================================
+/;  career.fg — Kushagra Rathore, modelled in Flow-Wing
+/;
+/;  This is real Flow-Wing source — the language Kushagra
+/;  built (C++/LLVM). Run it with his compiler:
+/;
+/;      flowwing-jit career.fg
+/;      flowwing career.fg -o career && ./career
+/;
+/;  The portfolio's REPL sends `run` to the same Flow-Wing
+/;  engine that powers flowwing.frii.site (POST /run), so
+/;  when the site is served behind that origin the terminal
+/;  is genuinely handled by Flow-Wing — not a fake shell.
+/; =========================================================
+
+fun whoami() -> nthg {
+    println("Kushagra Rathore")
+    println("Full-Stack Engineer - author of the Flow-Wing language")
+    println("Full-time since Jul 2024 (post-internship)")
+    println("Cut infra cost, latency and bundle size in production.")
+}
+
+fun projects() -> nthg {
+    println("Flow-Wing  - programming language (C++/LLVM, AOT/JIT, LSP)")
+    println("Foundo     - AI lost and found (React Native, Node, AWS)")
+    println("Eimentum   - MERN social platform (Socket.io, JWT)")
+    println("plus AnimeHub, Coin-Tracker, YT-DL, Voice-News")
+}
+
+fun impact() -> nthg {
+    println("-11%  cloud infra bill   (blue-green, pg_repack, Athena/S3)")
+    println("-85%  user-facing latency (API restructure)")
+    println("-35%  app download size   (RN, MMKV, RevoPush)")
+    println("gone  GraphQL CPU bottleneck")
+}
+
+fun contact() -> nthg {
+    println("email    : kushagrarathore002@gmail.com")
+    println("github   : github.com/kushagra1212")
+    println("flow-wing: https://flowwing.frii.site")
+}
+
+fun fg_main() -> nthg {
+    println("=== Kushagra Rathore - compiled by Flow-Wing ===")
+    println("")
+    whoami()
+    println("")
+    projects()
+    println("")
+    impact()
+    println("")
+    contact()
+}
+
+fg_main()
