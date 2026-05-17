@@ -56,4 +56,4 @@ server.fg         Flow-Wing program that serves all of the above (vortex)
 - LinkedIn / LeetCode / Medium URLs are guessed from the `kushagra1212`
   GitHub handle — marked `data-verify` in `index.html`. Replace with real URLs.
 - Phone number is public; remove from `index.html` if undesired.
-# portfolio
+
