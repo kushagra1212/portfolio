@@ -60,7 +60,7 @@
         "Custom Lexer, Parser, IR. AOT + JIT compilers. REPL.",
         "Garbage collection, modules, OOP. Full LSP for VS Code.",
         "Actively versioned · large multi-file changes · GTest suite.",
-        "Fun fact: this portfolio is served by it (server.fg)."
+        "This portfolio is served by it — see server.fg."
       ]
     },
     "foundo": {
@@ -189,12 +189,12 @@
     whoami: function () {
       head("Kushagra Rathore");
       line([["o-dim", "role     "], "Full-Stack Engineer @ Badho Technologies"]);
-      line([["o-dim", "edge     "], "builds compilers for fun — author of "], ["o-kw", "Flow-Wing"]);
+      line([["o-dim", "edge     "], "author of the ", ["o-kw", "Flow-Wing"], " language (C++/LLVM)"]);
       line([["o-dim", "based    "], "Gurugram, India"]);
       line([["o-dim", "stack    "], "C++ · TypeScript · React/RN · Node · PostgreSQL · AWS"]);
       blank();
-      line("Ships products end-to-end. Reduced infra cost 11%, latency 85%,");
-      line("bundle size 35%. When tooling annoyed him he wrote a language.");
+      line("Ships products end-to-end — backend, mobile and infra.");
+      line([["o-dim", "see "], ["o-acc", "impact"], ["o-dim", " for metrics · "], ["o-acc", "projects"], ["o-dim", " for work."]]);
     },
 
     skills: function (a) {
@@ -388,7 +388,7 @@
         blank();
         line("  Kushagra is open to strong full-stack / systems roles.");
         line([["o-acc", "  → kushagrarathore002@gmail.com", "mailto:kushagrarathore002@gmail.com?subject=Let%27s%20build%20something"]]);
-        line([["o-dim", "  fast offer path: mention 'Career Compiler' in the subject :)"]]);
+        line([["o-dim", "  mention ‘Career Compiler’ in the subject — I’ll reply fast."]]);
         return;
       }
       line([["o-err", "sudo: a password is required. (hint: `sudo hire`)"]]);

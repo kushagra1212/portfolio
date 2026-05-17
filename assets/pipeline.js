@@ -28,7 +28,7 @@
   /* ---------- boot terminal ---------- */
   var bootLines = [
     ['c-dim', "$ "], ['', "flowwing build career.fg --release\n"],
-    ['c-dim', "flowwing "], ['c-dim', "(built in C++/LLVM · the author wrote this compiler)\n\n"],
+    ['c-dim', "flowwing "], ['c-dim', "(built in C++/LLVM)\n\n"],
     ['c-dim', "[lexer]   "], ['', "tokenizing 4 roles, 8+ projects, since 2021\n"],
     ['c-dim', "[parser]  "], ['', "AST ok — root: "], ['c-kw', "Flow-Wing"], ['', " (C++/LLVM)\n"],
     ['c-dim', "[opt]     "], ['c-ok', "3 optimization passes ok "], ['c-dim', "→ see Optimizer\n"],
