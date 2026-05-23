@@ -13,3 +13,6 @@ target_include_directories(flowwing_mongo PRIVATE
   ${MONGOC_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS} ../src)
 target_link_libraries(flowwing_mongo PRIVATE
   ${MONGOC_LIBRARIES} ${BSON_LIBRARIES})
+# libbson 2.x public API loses alignment attribute on bson_t* through public typedef;
+# pointers are correctly aligned at runtime, suppress the spurious diagnostic.
+target_compile_options(flowwing_mongo PRIVATE -Wno-align-mismatch)
