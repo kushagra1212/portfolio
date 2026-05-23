@@ -3,6 +3,7 @@
 #include <mongoc/mongoc.h>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #define MAX_CLIENTS 64
 static mongoc_client_t* _clients[MAX_CLIENTS] = {nullptr};
@@ -113,6 +114,58 @@ int64_t _mongo_insert_one(int64_t coll_h, const char* json) {
     }
     bool ok = mongoc_collection_insert_one(_collections[coll_h], doc, nullptr, nullptr, &err);
     bson_destroy(doc);
+    if (!ok) {
+        _last_error = err.message;
+        return 0;
+    }
+    return 1;
+}
+
+int64_t _mongo_insert_many(int64_t coll_h, const char* jsonArray) {
+    _last_error.clear();
+    if (coll_h <= 0 || coll_h >= MAX_COLLECTIONS || _collections[coll_h] == nullptr) {
+        _last_error = "mongo: invalid collection handle";
+        return 0;
+    }
+    if (jsonArray == nullptr) {
+        _last_error = "mongo: null jsonArray";
+        return 0;
+    }
+    bson_error_t err;
+    bson_t* arr = bson_new_from_json(reinterpret_cast<const uint8_t*>(jsonArray), -1, &err);
+    if (arr == nullptr) {
+        _last_error = std::string("mongo: bad json array: ") + err.message;
+        return 0;
+    }
+    std::vector<bson_t*> docs;
+    bson_iter_t it;
+    if (!bson_iter_init(&it, arr)) {
+        bson_destroy(arr);
+        _last_error = "mongo: bson_iter_init failed";
+        return 0;
+    }
+    while (bson_iter_next(&it)) {
+        if (!BSON_ITER_HOLDS_DOCUMENT(&it)) {
+            for (auto* d : docs) bson_destroy(d);
+            bson_destroy(arr);
+            _last_error = "mongo: array element is not a document";
+            return 0;
+        }
+        const uint8_t* buf = nullptr;
+        uint32_t len = 0;
+        bson_iter_document(&it, &len, &buf);
+        docs.push_back(bson_new_from_data(buf, len));
+    }
+    std::vector<const bson_t*> ptrs;
+    ptrs.reserve(docs.size());
+    for (auto* d : docs) ptrs.push_back(d);
+
+    bool ok = mongoc_collection_insert_many(
+        _collections[coll_h], ptrs.data(), ptrs.size(), nullptr, nullptr, &err);
+
+    for (auto* d : docs) bson_destroy(d);
+    bson_destroy(arr);
+
     if (!ok) {
         _last_error = err.message;
         return 0;

@@ -7,6 +7,7 @@ fun _mongo_client_new(uri: as str) -> as int64 decl
 fun _mongo_client_close(h: as int64) -> as nthg decl
 fun _mongo_get_collection(client: as int64, db: as str, coll: as str) -> as int64 decl
 fun _mongo_insert_one(coll: as int64, json: as str) -> as int64 decl
+fun _mongo_insert_many(coll: as int64, jsonArr: as str) -> as int64 decl
 fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
@@ -34,6 +35,14 @@ fun fg_main() -> nthg {
         return :
     }
     io::printLogln("insert_one ok", "cyan")
+    var many_json: str = "[{\"k\":\"smoke\",\"n\":2},{\"k\":\"smoke\",\"n\":3}]"
+    var manyOk: int64 = _mongo_insert_many(coll, many_json)
+    if manyOk == 0 {
+        io::printErrorLogln("insert_many failed: " + _mongo_last_error(), "red")
+        _mongo_client_close(h)
+        return :
+    }
+    io::printLogln("insert_many ok", "cyan")
     _mongo_client_close(h)
     io::printLogln("closed cleanly", "cyan")
 }
