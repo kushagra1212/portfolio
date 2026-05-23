@@ -30,4 +30,4 @@ smoke: smoke-bin
 	$(BIN_DIR)/smoke-mongo
 
 clean:
-	rm -rf out bin
+	rm -rf out $(BIN_DIR)

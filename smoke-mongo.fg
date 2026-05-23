@@ -2,7 +2,6 @@
 /; Runs against mongodb://127.0.0.1:27017 default.
 
 bring io
-bring Err
 
 fun _mongo_client_new(uri: as str) -> as int64 decl
 fun _mongo_client_close(h: as int64) -> as nthg decl
