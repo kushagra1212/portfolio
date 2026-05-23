@@ -5,6 +5,7 @@ bring io
 
 fun _mongo_client_new(uri: as str) -> as int64 decl
 fun _mongo_client_close(h: as int64) -> as nthg decl
+fun _mongo_get_collection(client: as int64, db: as str, coll: as str) -> as int64 decl
 fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
@@ -15,6 +16,15 @@ fun fg_main() -> nthg {
         return :
     }
     io::printLogln("connected: handle=" + h, "cyan")
+    var db_name: str = "fw_smoke"
+    var coll_name: str = "events"
+    var coll: int64 = _mongo_get_collection(h, db_name, coll_name)
+    if coll == 0 {
+        io::printErrorLogln("get_collection failed: " + _mongo_last_error(), "red")
+        _mongo_client_close(h)
+        return :
+    }
+    io::printLogln("collection handle=" + coll, "cyan")
     _mongo_client_close(h)
     io::printLogln("closed cleanly", "cyan")
 }

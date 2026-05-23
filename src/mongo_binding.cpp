@@ -7,6 +7,16 @@
 #define MAX_CLIENTS 64
 static mongoc_client_t* _clients[MAX_CLIENTS] = {nullptr};
 
+#define MAX_COLLECTIONS 256
+static mongoc_collection_t* _collections[MAX_COLLECTIONS] = {nullptr};
+
+static int64_t _alloc_collection_slot() {
+    for (int64_t i = 1; i < MAX_COLLECTIONS; ++i) {
+        if (_collections[i] == nullptr) return i;
+    }
+    return 0;
+}
+
 thread_local std::string _last_error;
 
 static std::once_flag _init_flag;
@@ -58,6 +68,31 @@ void _mongo_client_close(int64_t h) {
         mongoc_client_destroy(_clients[h]);
         _clients[h] = nullptr;
     }
+}
+
+int64_t _mongo_get_collection(int64_t client_h, const char* db, const char* coll) {
+    _last_error.clear();
+    if (client_h <= 0 || client_h >= MAX_CLIENTS || _clients[client_h] == nullptr) {
+        _last_error = "mongo: invalid client handle";
+        return 0;
+    }
+    if (db == nullptr || coll == nullptr) {
+        _last_error = "mongo: null db or collection name";
+        return 0;
+    }
+    mongoc_collection_t* c = mongoc_client_get_collection(_clients[client_h], db, coll);
+    if (c == nullptr) {
+        _last_error = "mongo: get_collection returned null";
+        return 0;
+    }
+    int64_t h = _alloc_collection_slot();
+    if (h == 0) {
+        mongoc_collection_destroy(c);
+        _last_error = "mongo: collection handle table full";
+        return 0;
+    }
+    _collections[h] = c;
+    return h;
 }
 
 const char* _mongo_last_error() { return _last_error.c_str(); }
