@@ -14,6 +14,7 @@ FW_LINK := -L $(REPO_ROOT)/build/out -L $(MONGO_LIB_DIR) \
 .PHONY: lib server smoke-bin run smoke clean
 lib:
 	cmake -S . -B out && cmake --build out
+	ln -sf build/out/compile_commands.json $(REPO_ROOT)/compile_commands.json
 
 server: lib
 	mkdir -p $(BIN_DIR)

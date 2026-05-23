@@ -6,3 +6,5 @@ build/CMakeCache.txt
 build/cmake_install.cmake
 build/Makefile.cmake
 build/*.dir/
+compile_commands.json
+.claude

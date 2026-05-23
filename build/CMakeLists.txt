@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(flowwing_mongo CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(MONGOC REQUIRED mongoc2)
