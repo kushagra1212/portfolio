@@ -10,6 +10,9 @@ fun _mongo_insert_one(coll: as int64, json: as str) -> as int64 decl
 fun _mongo_insert_many(coll: as int64, jsonArr: as str) -> as int64 decl
 fun _mongo_count(coll: as int64, filterJson: as str) -> as int64 decl
 fun _mongo_find_one(coll: as int64, filterJson: as str) -> as str decl
+fun _mongo_find(coll: as int64, filterJson: as str, limit: as int64) -> as int64 decl
+fun _mongo_cursor_next(cur: as int64) -> as str decl
+fun _mongo_cursor_close(cur: as int64) -> as nthg decl
 fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
@@ -55,6 +58,23 @@ fun fg_main() -> nthg {
     } else {
         io::printLogln("find_one: " + one, "white")
     }
+    var cur_filter: str = "{\"k\":\"smoke\"}"
+    var cur_limit: int64 = 5
+    var curH: int64 = _mongo_find(coll, cur_filter, cur_limit)
+    if curH == 0 {
+        io::printErrorLogln("find failed: " + _mongo_last_error(), "red")
+        _mongo_client_close(h)
+        return :
+    }
+    var seen: int64 = 0
+    var s: str = _mongo_cursor_next(curH)
+    while s != "" {
+        seen = seen + 1
+        io::printLogln("doc: " + s, "white")
+        s = _mongo_cursor_next(curH)
+    }
+    io::printLogln("cursor iterated: " + seen, "cyan")
+    _mongo_cursor_close(curH)
     _mongo_client_close(h)
     io::printLogln("closed cleanly", "cyan")
 }

@@ -18,8 +18,19 @@ static int64_t _alloc_collection_slot() {
     return 0;
 }
 
+#define MAX_CURSORS 256
+static mongoc_cursor_t* _cursors[MAX_CURSORS] = {nullptr};
+
+static int64_t _alloc_cursor_slot() {
+    for (int64_t i = 1; i < MAX_CURSORS; ++i) {
+        if (_cursors[i] == nullptr) return i;
+    }
+    return 0;
+}
+
 thread_local std::string _last_error;
 thread_local std::string _find_one_result;
+thread_local std::string _cursor_next_result;
 
 static std::once_flag _init_flag;
 static void _ensure_init() {
@@ -65,11 +76,24 @@ int64_t _mongo_client_new(const char* uri) {
 }
 
 void _mongo_client_close(int64_t h) {
-    if (h <= 0 || h >= MAX_CLIENTS) return;
-    if (_clients[h] != nullptr) {
-        mongoc_client_destroy(_clients[h]);
-        _clients[h] = nullptr;
+    if (h <= 0 || h >= MAX_CLIENTS || _clients[h] == nullptr) return;
+    // Collections and cursors borrow the client pointer internally — once the
+    // client is destroyed they dangle. v1 is single-client, so close-all is safe.
+    // When multi-client lands later, track parent client per collection/cursor.
+    for (int64_t i = 1; i < MAX_COLLECTIONS; ++i) {
+        if (_collections[i] != nullptr) {
+            mongoc_collection_destroy(_collections[i]);
+            _collections[i] = nullptr;
+        }
     }
+    for (int64_t i = 1; i < MAX_CURSORS; ++i) {
+        if (_cursors[i] != nullptr) {
+            mongoc_cursor_destroy(_cursors[i]);
+            _cursors[i] = nullptr;
+        }
+    }
+    mongoc_client_destroy(_clients[h]);
+    _clients[h] = nullptr;
 }
 
 int64_t _mongo_get_collection(int64_t client_h, const char* db, const char* coll) {
@@ -231,6 +255,68 @@ const char* _mongo_find_one(int64_t coll_h, const char* filterJson) {
     // empty result = "" with no error
     mongoc_cursor_destroy(cur);
     return _find_one_result.c_str();
+}
+
+int64_t _mongo_find(int64_t coll_h, const char* filterJson, int64_t limit) {
+    _last_error.clear();
+    if (coll_h <= 0 || coll_h >= MAX_COLLECTIONS || _collections[coll_h] == nullptr) {
+        _last_error = "mongo: invalid collection handle";
+        return 0;
+    }
+    const char* fj = (filterJson == nullptr || *filterJson == '\0') ? "{}" : filterJson;
+    bson_error_t err;
+    bson_t* filter = bson_new_from_json(reinterpret_cast<const uint8_t*>(fj), -1, &err);
+    if (filter == nullptr) {
+        _last_error = std::string("mongo: bad filter json: ") + err.message;
+        return 0;
+    }
+    bson_t opts = BSON_INITIALIZER;
+    if (limit > 0) BSON_APPEND_INT64(&opts, "limit", limit);
+
+    mongoc_cursor_t* cur = mongoc_collection_find_with_opts(
+        _collections[coll_h], filter, &opts, nullptr);
+    bson_destroy(filter);
+    bson_destroy(&opts);
+
+    int64_t h = _alloc_cursor_slot();
+    if (h == 0) {
+        mongoc_cursor_destroy(cur);
+        _last_error = "mongo: cursor handle table full";
+        return 0;
+    }
+    _cursors[h] = cur;
+    return h;
+}
+
+const char* _mongo_cursor_next(int64_t cur_h) {
+    _last_error.clear();
+    _cursor_next_result.clear();
+    if (cur_h <= 0 || cur_h >= MAX_CURSORS || _cursors[cur_h] == nullptr) {
+        _last_error = "mongo: invalid cursor handle";
+        return _cursor_next_result.c_str();
+    }
+    const bson_t* doc = nullptr;
+    if (!mongoc_cursor_next(_cursors[cur_h], &doc)) {
+        bson_error_t err;
+        if (mongoc_cursor_error(_cursors[cur_h], &err)) {
+            _last_error = err.message;
+        }
+        return _cursor_next_result.c_str();  // "" = end-of-stream OR error
+    }
+    char* json = bson_as_relaxed_extended_json(doc, nullptr);
+    if (json != nullptr) {
+        _cursor_next_result = json;
+        bson_free(json);
+    }
+    return _cursor_next_result.c_str();
+}
+
+void _mongo_cursor_close(int64_t cur_h) {
+    if (cur_h <= 0 || cur_h >= MAX_CURSORS) return;
+    if (_cursors[cur_h] != nullptr) {
+        mongoc_cursor_destroy(_cursors[cur_h]);
+        _cursors[cur_h] = nullptr;
+    }
 }
 
 const char* _mongo_last_error() { return _last_error.c_str(); }

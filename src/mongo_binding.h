@@ -10,5 +10,8 @@ int64_t _mongo_insert_one(int64_t coll, const char* json);
 int64_t _mongo_insert_many(int64_t coll, const char* jsonArray);
 int64_t _mongo_count(int64_t coll, const char* filterJson);
 const char* _mongo_find_one(int64_t coll, const char* filterJson);
+int64_t     _mongo_find(int64_t coll, const char* filterJson, int64_t limit);
+const char* _mongo_cursor_next(int64_t cur);
+void        _mongo_cursor_close(int64_t cur);
 const char* _mongo_last_error();
 }
