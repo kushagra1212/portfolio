@@ -99,7 +99,7 @@ fun fg_main() -> nthg {
         /; === GET /admin/<token>/events -> JSON feed of recent events ===
         else if method == "GET" && path == adminEventsPath {
             var allFilter: str = "{}"
-            var lim: int64 = 200
+            var lim: int64 = 2000
             var cur: mongo::Cursor = events.find(allFilter, lim)
             var s: str = cur.next()
             var arr: str = "["

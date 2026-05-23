@@ -4,113 +4,80 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Admin · Portfolio Events</title>
-  <style>
-    :root {
-      --bg: #0b1320;
-      --panel: #11192c;
-      --panel-2: #1a2440;
-      --border: #2c3a5a;
-      --fg: #e3eaf2;
-      --fg-dim: #8a9aaf;
-      --accent: #5dbb9c;
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.5em 1em;
-      background: var(--bg);
-      color: var(--fg);
-    }
-    h1 { margin: 0 0 1em; font-size: 1.4em; font-weight: 600; }
-    h1 small { color: var(--fg-dim); font-weight: 400; }
-    .controls {
-      display: flex;
-      gap: 0.6em;
-      flex-wrap: wrap;
-      margin: 1em 0;
-      align-items: center;
-    }
-    input, select, button {
-      padding: 0.45em 0.7em;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      color: var(--fg);
-      border-radius: 4px;
-      font: inherit;
-    }
-    input { flex: 1 1 240px; min-width: 200px; }
-    button { cursor: pointer; }
-    button:hover { background: var(--border); }
-    #status { color: var(--fg-dim); font-size: 0.85em; }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.6em;
-      margin-bottom: 1em;
-    }
-    .stat {
-      background: var(--panel);
-      padding: 0.8em;
-      border-radius: 4px;
-      border: 1px solid var(--border);
-    }
-    .stat .num { font-size: 1.6em; color: var(--accent); display: block; }
-    .stat .label { color: var(--fg-dim); font-size: 0.85em; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-    th, td { padding: 0.45em 0.7em; border-bottom: 1px solid var(--panel); text-align: left; vertical-align: top; }
-    th {
-      background: var(--panel);
-      position: sticky;
-      top: 0;
-      font-weight: 600;
-      color: var(--fg-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.75em;
-    }
-    tr:hover { background: var(--panel); }
-    .pill {
-      display: inline-block;
-      padding: 0.1em 0.55em;
-      border-radius: 10px;
-      background: var(--panel-2);
-      font-size: 0.78em;
-    }
-    .pill.page_load { background: #1b3a2d; color: #95dfb7; }
-    .pill.scroll    { background: #3a2d1b; color: #e0c082; }
-    .pill.cta_click { background: #2d1b3a; color: #c9a3e8; }
-    .pill.page_exit { background: #3a1b1b; color: #e89c9c; }
-    .mono { font-family: ui-monospace, monospace; color: var(--fg-dim); }
-    .empty { text-align: center; padding: 3em; color: var(--fg-dim); }
-  </style>
+  <title>Admin · Portfolio Analytics</title>
+  <link rel="stylesheet" href="/assets/admin.css">
 </head>
 <body>
-  <h1>Portfolio · Events <small id="meta"></small></h1>
+  <header class="page-head">
+    <h1>Portfolio · Analytics <small id="meta"></small></h1>
+    <div class="controls">
+      <select id="range">
+        <option value="1">last 1h</option>
+        <option value="24" selected>last 24h</option>
+        <option value="168">last 7d</option>
+        <option value="0">all time</option>
+      </select>
+      <button id="refresh">refresh</button>
+      <label class="auto"><input type="checkbox" id="auto" checked> auto-refresh 15s</label>
+      <span id="status"></span>
+    </div>
+  </header>
 
-  <div class="stats" id="stats"></div>
+  <!-- Overview cards -->
+  <section class="grid stats" id="overviewStats"></section>
 
-  <div class="controls">
-    <input id="filter" placeholder="filter (type, page, cta, session prefix)…">
-    <select id="typesel">
-      <option value="">all types</option>
-      <option value="page_load">page_load</option>
-      <option value="scroll">scroll</option>
-      <option value="cta_click">cta_click</option>
-      <option value="page_exit">page_exit</option>
-    </select>
-    <button id="refresh">refresh</button>
-    <span id="status"></span>
+  <!-- Three-column charts row -->
+  <section class="panels">
+    <div class="panel">
+      <h2>Top CTAs</h2>
+      <div id="topCtas" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2>Section engagement</h2>
+      <div id="sectionEng" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2>Event mix</h2>
+      <div id="eventMix" class="bars"></div>
+    </div>
+  </section>
+
+  <section class="panels">
+    <div class="panel">
+      <h2>REPL commands</h2>
+      <div id="replCmds" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2>Browsers / devices</h2>
+      <div id="devices" class="bars"></div>
+    </div>
+    <div class="panel">
+      <h2>Referrers</h2>
+      <div id="referrers" class="bars"></div>
+    </div>
+  </section>
+
+  <section class="panels two-col">
+    <div class="panel">
+      <h2>Recent sessions <small id="sessionCount"></small></h2>
+      <div id="sessionList" class="session-list"></div>
+    </div>
+    <div class="panel">
+      <h2>Live feed (last 30)</h2>
+      <div id="liveFeed" class="live"></div>
+    </div>
+  </section>
+
+  <!-- Per-session timeline modal -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2 id="modalTitle">Session timeline</h2>
+        <button id="modalClose" aria-label="close">×</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
   </div>
-
-  <table>
-    <thead>
-      <tr><th>ts</th><th>type</th><th>session</th><th>page</th><th>detail</th></tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
 
   <script src="/assets/admin.js" defer></script>
 </body>

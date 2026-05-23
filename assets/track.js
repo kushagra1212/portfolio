@@ -1,8 +1,13 @@
-// assets/track.js — minimal event tracker. Zero deps. ~80 lines.
+// assets/track.js — comprehensive zero-dep tracker.
 //
-// POSTs JSON events to /track. Server writes them to portfolio.events in mongo.
-// Captures: page_load, scroll-depth thresholds (25/50/75/100), CTA clicks, page exit.
-// Session id stored in sessionStorage so a session = one tab visit.
+// Captures: page_load, scroll-depth (25/50/75/100), section_view (per stage
+// via IntersectionObserver), cta_click (with x/y), background_click (sampled,
+// for heatmap), selection, copy, paste, contextmenu, repl_command, hover_dwell
+// (CTA held >2s), visibility_change, viewport_resize, page_exit.
+//
+// Privacy: NEVER sends selected/copied/typed text. Sends LENGTHS and the
+// section the action happened in. Click coords are normalized to viewport.
+// Session id lives in sessionStorage so a session = one tab visit.
 (function () {
   var SESSION_KEY = "fw_session_id";
   var ENDPOINT = "/track";
@@ -18,22 +23,28 @@
     return s;
   }
 
+  // Find which top-level <section id="..."> the element lives in (or null).
+  function sectionOf(el) {
+    while (el && el !== document.body) {
+      if (el.tagName === "SECTION" && el.id) return el.id;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  var sid = sessionId();
+
   function send(evt) {
     var payload = Object.assign(
       {
         ts: Date.now(),
-        session: sessionId(),
+        session: sid,
         page: location.pathname + location.search,
-        ref: document.referrer || null,
-        ua: navigator.userAgent,
-        vw: window.innerWidth,
-        vh: window.innerHeight,
       },
       evt
     );
     try {
       var body = JSON.stringify(payload);
-      // sendBeacon survives page unload, but only for small payloads.
       if (navigator.sendBeacon) {
         navigator.sendBeacon(
           ENDPOINT,
@@ -52,10 +63,31 @@
     }
   }
 
-  // 1) page_load
-  send({ type: "page_load" });
+  // ---- 1) page_load: rich one-time profile ----
+  var conn = navigator.connection || {};
+  send({
+    type: "page_load",
+    ref: document.referrer || null,
+    ua: navigator.userAgent,
+    lang: navigator.language,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    tz_off: new Date().getTimezoneOffset(),
+    vw: window.innerWidth,
+    vh: window.innerHeight,
+    sw: window.screen.width,
+    sh: window.screen.height,
+    dpr: window.devicePixelRatio || 1,
+    prefers_dark: window.matchMedia("(prefers-color-scheme: dark)").matches,
+    prefers_reduced_motion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    net_type: conn.effectiveType || null,
+    net_downlink: conn.downlink || null,
+    net_save_data: conn.saveData || false,
+    cores: navigator.hardwareConcurrency || null,
+    mem: navigator.deviceMemory || null,
+    touch: ("ontouchstart" in window) || navigator.maxTouchPoints > 0,
+  });
 
-  // 2) scroll depth — fires once per 25/50/75/100 threshold crossed
+  // ---- 2) scroll depth (25/50/75/100) ----
   var sentDepths = {};
   function onScroll() {
     var docH = Math.max(
@@ -63,8 +95,7 @@
       document.documentElement.scrollHeight
     );
     var winH = window.innerHeight;
-    var scrolled = window.scrollY + winH;
-    var pct = Math.floor((scrolled / docH) * 100);
+    var pct = Math.floor(((window.scrollY + winH) / docH) * 100);
     [25, 50, 75, 100].forEach(function (d) {
       if (pct >= d && !sentDepths[d]) {
         sentDepths[d] = true;
@@ -74,25 +105,201 @@
   }
   window.addEventListener("scroll", onScroll, { passive: true });
 
-  // 3) CTA clicks — anything with [data-cta] OR any <a href>
-  document.addEventListener(
-    "click",
-    function (e) {
-      var t = e.target.closest("[data-cta], a[href], button");
-      if (!t) return;
+  // ---- 3) section_view via IntersectionObserver ----
+  // Fires once per section per session, with dwell_ms tracked until it leaves the viewport.
+  var sectionEnter = {}; // sid -> entered timestamp
+  var sectionSent = {};  // sid -> view event sent
+  var sectionDwell = {}; // sid -> cumulative ms while in viewport
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      var now = Date.now();
+      entries.forEach(function (entry) {
+        var id = entry.target.id;
+        if (!id) return;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.4) {
+          if (!sectionEnter[id]) {
+            sectionEnter[id] = now;
+            if (!sectionSent[id]) {
+              sectionSent[id] = true;
+              send({ type: "section_view", section: id });
+            }
+          }
+        } else if (sectionEnter[id]) {
+          sectionDwell[id] = (sectionDwell[id] || 0) + (now - sectionEnter[id]);
+          sectionEnter[id] = 0;
+        }
+      });
+    }, { threshold: [0, 0.4, 0.75] });
+    document.querySelectorAll("section[id]").forEach(function (s) { io.observe(s); });
+  }
+
+  // ---- 4) cta_click (with viewport-normalized coords) + 5) background_click (sampled) ----
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("[data-cta], a[href], button");
+    var x = e.clientX / window.innerWidth;
+    var y = e.clientY / window.innerHeight;
+    if (t) {
       send({
         type: "cta_click",
-        cta: t.getAttribute("data-cta") || t.textContent.trim().slice(0, 50),
+        cta: t.getAttribute("data-cta") || t.textContent.trim().slice(0, 60),
         href: t.getAttribute("href") || null,
         tag: t.tagName.toLowerCase(),
+        section: sectionOf(t),
+        x: +x.toFixed(3),
+        y: +y.toFixed(3),
       });
-    },
-    true
-  );
+    } else if (Math.random() < 0.2) {
+      // 1-in-5 sample of background clicks for a click-density heatmap
+      send({
+        type: "background_click",
+        section: sectionOf(e.target),
+        x: +x.toFixed(3),
+        y: +y.toFixed(3),
+      });
+    }
+  }, true);
 
-  // 4) time-on-page at unload
+  // ---- 6) selection (length + section, NOT text) ----
+  var selTimer = null;
+  document.addEventListener("selectionchange", function () {
+    if (selTimer) clearTimeout(selTimer);
+    selTimer = setTimeout(function () {
+      var sel = document.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      var len = sel.toString().length;
+      if (len < 3) return; // skip tiny accidental selections
+      var anchor = sel.anchorNode;
+      var el = anchor && anchor.nodeType === 3 ? anchor.parentElement : anchor;
+      send({ type: "selection", length: len, section: sectionOf(el) });
+    }, 400);
+  });
+
+  // ---- 7) copy / 8) paste / 9) contextmenu ----
+  document.addEventListener("copy", function (e) {
+    var sel = document.getSelection();
+    var len = sel ? sel.toString().length : 0;
+    send({
+      type: "copy",
+      length: len,
+      section: sectionOf(e.target),
+    });
+  });
+  document.addEventListener("paste", function (e) {
+    var data = e.clipboardData && e.clipboardData.getData("text");
+    send({
+      type: "paste",
+      length: data ? data.length : 0,
+      section: sectionOf(e.target),
+    });
+  });
+  document.addEventListener("contextmenu", function (e) {
+    send({
+      type: "contextmenu",
+      section: sectionOf(e.target),
+      x: +(e.clientX / window.innerWidth).toFixed(3),
+      y: +(e.clientY / window.innerHeight).toFixed(3),
+    });
+  });
+
+  // ---- 10) repl_command — capture lines entered into #replIn ----
+  var replIn = document.getElementById("replIn");
+  if (replIn) {
+    var typingStart = null;
+    replIn.addEventListener("input", function () {
+      if (!typingStart) typingStart = Date.now();
+    });
+    replIn.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        var cmd = (replIn.value || "").trim();
+        if (cmd) {
+          send({
+            type: "repl_command",
+            cmd: cmd.slice(0, 80),
+            ms_typing: typingStart ? Date.now() - typingStart : 0,
+          });
+        }
+        typingStart = null;
+      }
+    });
+    replIn.addEventListener("focus", function () {
+      send({ type: "repl_focus" });
+    });
+  }
+
+  // ---- 11) hover_dwell on CTAs (>=2s without click) ----
+  var hoverTimer = null;
+  var hoverEl = null;
+  var hoverStart = 0;
+  document.addEventListener("mouseover", function (e) {
+    var t = e.target.closest("[data-cta], a[href], button");
+    if (!t || t === hoverEl) return;
+    hoverEl = t;
+    hoverStart = Date.now();
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(function () {
+      if (hoverEl === t) {
+        send({
+          type: "hover_dwell",
+          cta: t.getAttribute("data-cta") || t.textContent.trim().slice(0, 60),
+          ms: Date.now() - hoverStart,
+          section: sectionOf(t),
+        });
+      }
+    }, 2000);
+  });
+  document.addEventListener("mouseout", function (e) {
+    if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+    hoverEl = null;
+  });
+
+  // ---- 12) visibility_change (tab focus/blur) ----
+  var lastVisible = Date.now();
+  var totalVisible = 0;
+  document.addEventListener("visibilitychange", function () {
+    var now = Date.now();
+    if (document.hidden) {
+      totalVisible += now - lastVisible;
+      send({ type: "visibility", hidden: true, visible_ms_so_far: totalVisible });
+    } else {
+      lastVisible = now;
+      send({ type: "visibility", hidden: false });
+    }
+  });
+
+  // ---- 13) viewport_resize (debounced) ----
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      send({
+        type: "viewport_resize",
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+      });
+    }, 500);
+  });
+
+  // ---- 14) page_exit (rich summary) ----
   var loadAt = Date.now();
   window.addEventListener("pagehide", function () {
-    send({ type: "page_exit", ms: Date.now() - loadAt });
+    // Flush any in-flight section dwell timers
+    var now = Date.now();
+    Object.keys(sectionEnter).forEach(function (id) {
+      if (sectionEnter[id]) {
+        sectionDwell[id] = (sectionDwell[id] || 0) + (now - sectionEnter[id]);
+        sectionEnter[id] = 0;
+      }
+    });
+    if (!document.hidden) totalVisible += now - lastVisible;
+    var max_depth = 0;
+    [25, 50, 75, 100].forEach(function (d) { if (sentDepths[d]) max_depth = d; });
+    send({
+      type: "page_exit",
+      total_ms: now - loadAt,
+      visible_ms: totalVisible,
+      max_scroll: max_depth,
+      sections_viewed: Object.keys(sectionSent).length,
+      section_dwell: sectionDwell,
+    });
   });
 })();
