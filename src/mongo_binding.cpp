@@ -173,6 +173,29 @@ int64_t _mongo_insert_many(int64_t coll_h, const char* jsonArray) {
     return 1;
 }
 
+int64_t _mongo_count(int64_t coll_h, const char* filterJson) {
+    _last_error.clear();
+    if (coll_h <= 0 || coll_h >= MAX_COLLECTIONS || _collections[coll_h] == nullptr) {
+        _last_error = "mongo: invalid collection handle";
+        return -1;
+    }
+    const char* fj = (filterJson == nullptr || *filterJson == '\0') ? "{}" : filterJson;
+    bson_error_t err;
+    bson_t* filter = bson_new_from_json(reinterpret_cast<const uint8_t*>(fj), -1, &err);
+    if (filter == nullptr) {
+        _last_error = std::string("mongo: bad filter json: ") + err.message;
+        return -1;
+    }
+    int64_t n = mongoc_collection_count_documents(
+        _collections[coll_h], filter, nullptr, nullptr, nullptr, &err);
+    bson_destroy(filter);
+    if (n < 0) {
+        _last_error = err.message;
+        return -1;
+    }
+    return n;
+}
+
 const char* _mongo_last_error() { return _last_error.c_str(); }
 
 } // extern "C"
