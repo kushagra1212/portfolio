@@ -234,3 +234,67 @@ button:hover { background: var(--border); }
 .timeline-row .detail .dim { color: var(--fg-dim); }
 
 .empty { text-align: center; padding: 2em; color: var(--fg-faint); font-style: italic; }
+
+/* Contact channels grid */
+.panel-wide { grid-column: 1 / -1; }
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7em;
+}
+.contact-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  padding: 0.8em 0.9em;
+  position: relative;
+  overflow: hidden;
+}
+.contact-card .name {
+  color: var(--accent-2);
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.contact-card .name .channel-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+.contact-card .name .channel-icon.cold { background: var(--fg-faint); }
+.contact-card .clicks {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--fg);
+  margin-top: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+.contact-card .clicks .unit { font-size: 0.6em; color: var(--fg-dim); margin-left: 0.3em; }
+.contact-card .meta {
+  font-size: 0.75em;
+  color: var(--fg-dim);
+  margin-top: 0.4em;
+  line-height: 1.5;
+}
+.contact-card .meta b { color: var(--fg); font-weight: 500; }
+.contact-card .meta .dim { color: var(--fg-faint); }
+.contact-card .pct-bar {
+  margin-top: 0.5em;
+  background: var(--bg);
+  height: 0.35em;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.contact-card .pct-bar .fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.contact-card.zero { opacity: 0.55; }
+.contact-card.zero .clicks { color: var(--fg-faint); }

@@ -207,6 +207,68 @@
     }).join("");
   }
 
+  function renderContactChannels(events) {
+    // Channels we care about (label, key matching data-cta prefix or exact)
+    var channels = [
+      { key: "contact_email",    label: "email",    accent: "#95dfb7" },
+      { key: "contact_resume",   label: "résumé",   accent: "#95c0df" },
+      { key: "contact_phone",    label: "phone",    accent: "#e0c082" },
+      { key: "contact_github",   label: "github",   accent: "#c9a3e8" },
+      { key: "contact_linkedin", label: "linkedin", accent: "#95dfd8" },
+      { key: "contact_leetcode", label: "leetcode", accent: "#e0d782" },
+      { key: "contact_medium",   label: "medium",   accent: "#b8a958" },
+    ];
+    var byChan = {};
+    var totalClicks = 0;
+    var uniqueClickers = {};
+    channels.forEach(function (c) {
+      byChan[c.key] = { clicks: 0, sessions: {}, hovers: 0, hover_ms_total: 0, last_ts: 0 };
+    });
+    events.forEach(function (e) {
+      if (e.type === "cta_click" && e.cta && byChan[e.cta]) {
+        byChan[e.cta].clicks++;
+        totalClicks++;
+        if (e.session) byChan[e.cta].sessions[e.session] = true;
+        if (e.session) uniqueClickers[e.session] = true;
+        if (e.ts > byChan[e.cta].last_ts) byChan[e.cta].last_ts = e.ts;
+      } else if (e.type === "hover_dwell" && e.cta && byChan[e.cta]) {
+        byChan[e.cta].hovers++;
+        byChan[e.cta].hover_ms_total += (e.ms || 0);
+      }
+    });
+
+    $("contactSummary").textContent = "· " + totalClicks + " total clicks · "
+      + Object.keys(uniqueClickers).length + " unique visitors clicked";
+
+    var maxClicks = Math.max(1, channels.reduce(function (m, c) {
+      return Math.max(m, byChan[c.key].clicks);
+    }, 0));
+
+    var html = channels.map(function (c) {
+      var b = byChan[c.key];
+      var pct = (b.clicks / maxClicks) * 100;
+      var uniq = Object.keys(b.sessions).length;
+      var avgHover = b.hovers ? Math.round(b.hover_ms_total / b.hovers) : 0;
+      var conv = b.hovers ? Math.round((b.clicks / (b.clicks + b.hovers)) * 100) : (b.clicks > 0 ? 100 : 0);
+      var lastSeen = b.last_ts ? dfmt(b.last_ts) : "never";
+      var zeroCls = b.clicks === 0 ? "zero" : "";
+      var iconCls = b.clicks === 0 ? "channel-icon cold" : "channel-icon";
+      return '<div class="contact-card ' + zeroCls + '">'
+        + '<div class="name"><span class="' + iconCls + '" style="background:' + (b.clicks ? c.accent : "var(--fg-faint)") + '"></span>' + esc(c.label) + '</div>'
+        + '<div class="clicks">' + b.clicks + '<span class="unit">clicks</span></div>'
+        + '<div class="meta">'
+          + '<b>' + uniq + '</b> unique visitor' + (uniq === 1 ? '' : 's') + '<br>'
+          + '<b>' + b.hovers + '</b> hover-dwell' + (b.hovers === 1 ? '' : 's')
+            + (b.hovers > 0 ? ' · avg ' + avgHover + 'ms' : '')
+            + '<br>'
+          + '<span class="dim">conv: ' + conv + '% · last: ' + esc(lastSeen) + '</span>'
+        + '</div>'
+        + '<div class="pct-bar"><div class="fill" style="width:' + pct.toFixed(1) + '%;background:' + c.accent + '"></div></div>'
+        + '</div>';
+    }).join("");
+    $("contactGrid").innerHTML = html;
+  }
+
   function renderTopCtas(events) {
     var rows = tallyTop(events.filter(function (e) { return e.type === "cta_click"; }),
       function (e) { return e.cta || (e.href || "—"); }, 12);
@@ -357,6 +419,7 @@
     var inRange = filterByRange(all);
     metaEl.textContent = "· " + all.length + " events · " + inRange.length + " in range · updated " + tsfmt(Date.now());
     renderOverview(inRange);
+    renderContactChannels(inRange);
     renderTopCtas(inRange);
     renderSectionEng(inRange);
     renderEventMix(inRange);

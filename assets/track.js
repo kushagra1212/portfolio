@@ -208,6 +208,9 @@
     replIn.addEventListener("input", function () {
       if (!typingStart) typingStart = Date.now();
     });
+    // Capture phase — compiler.js's own keydown handler clears inp.value
+    // synchronously on Enter, so by the time a bubble-phase listener runs the
+    // value is already empty. Capture runs before that.
     replIn.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         var cmd = (replIn.value || "").trim();
@@ -220,7 +223,7 @@
         }
         typingStart = null;
       }
-    });
+    }, true);
     replIn.addEventListener("focus", function () {
       send({ type: "repl_focus" });
     });
