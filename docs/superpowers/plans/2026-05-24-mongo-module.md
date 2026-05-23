@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a local Flow-Wing binding to libmongoc (`mongo-Module.fg`) in this repo, imported via `bring 'mongo-Module.fg'`, exposing CRUD-lite Mongo to `server.fg`.
+**Goal:** Add a local Flow-Wing binding to libmongoc (`mongo-Module.fg`) in this repo, imported via `bring "mongo-Module.fg"`, exposing CRUD-lite Mongo to `server.fg`.
 
 **Architecture:** Three layers — typed `.fg` classes → `fun _mongo_*(...) decl` FFI declarations → `extern "C"` C++ glue over libmongoc, packaged as `libflowwing_mongo.a` and linked at `flowwing` AOT-compile time via `-L./build/out -l flowwing_mongo`. Handle table maps int64 ↔ `mongoc_client_t*`/`mongoc_collection_t*`/`mongoc_cursor_t*`. JSON in for writes, opaque cursor handle out for reads. Mirrors `fw-modules/raylib_module` shape.
 
@@ -1062,7 +1062,7 @@ fun _mongo_last_error() -> as str decl
 Remove every inline `fun _mongo_*(...) decl` line from `smoke-mongo.fg`. Add at the top, after the existing `bring` lines:
 
 ```flow-wing
-bring 'mongo-Module.fg'
+bring "mongo-Module.fg"
 ```
 
 - [ ] **Step 3: Run smoke**
@@ -1073,7 +1073,7 @@ cd build && make smoke
 
 Expected: identical output to Task 8 — the move from inline decls to module decls must be behavior-neutral.
 
-If `bring 'mongo-Module.fg'` errors with "module not found" — Flow-Wing path-bring may require `./mongo-Module.fg` or a different quoting. Check the compiler error verbatim and adjust the path form. (Risk flagged in the spec.)
+If `bring "mongo-Module.fg"` errors with "module not found" — Flow-Wing path-bring may require `./mongo-Module.fg` or a different quoting. Check the compiler error verbatim and adjust the path form. (Risk flagged in the spec.)
 
 - [ ] **Step 4: Commit**
 
@@ -1173,7 +1173,7 @@ Replace the entire file with:
 ```flow-wing
 /; smoke-mongo.fg — uses the typed class API from mongo-Module.fg
 
-bring 'mongo-Module.fg'
+bring "mongo-Module.fg"
 bring io
 bring Err
 

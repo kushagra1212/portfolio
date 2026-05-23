@@ -6,7 +6,7 @@ Consumer: `server.fg` (portfolio analytics ingest)
 
 ## Goal
 
-Add a MongoDB binding to Flow-Wing that lives **locally in this repo** (imported via `bring 'mongo-Module.fg'`), wrapping the libmongoc C driver. Mirrors the shape of `fw-modules/raylib_module` (extern decls + C++ glue + CMake), scoped down for one repo and one use case.
+Add a MongoDB binding to Flow-Wing that lives **locally in this repo** (imported via `bring "mongo-Module.fg"`), wrapping the libmongoc C driver. Mirrors the shape of `fw-modules/raylib_module` (extern decls + C++ glue + CMake), scoped down for one repo and one use case.
 
 ## Non-goals (v1)
 
@@ -18,7 +18,7 @@ Add a MongoDB binding to Flow-Wing that lives **locally in this repo** (imported
 
 ```
 server.fg                            consumer
-  | bring 'mongo-Module.fg'
+  | bring "mongo-Module.fg"
 mongo-Module.fg                      typed classes: MongoClient, MongoCollection, MongoCursor
   | fun _mongo_*(...) decl           Flow-Wing FFI declarations
 libflowwing_mongo.a                  extern "C" glue (handle table + thread-local error)
@@ -121,7 +121,7 @@ class MongoCursor {
 ### Usage from `server.fg`
 
 ```flow-wing
-bring 'mongo-Module.fg'
+bring "mongo-Module.fg"
 
 var mc: MongoClient = new MongoClient()
 var err: Err::Result = mc.connect("mongodb+srv://user:pw@cluster/...")
@@ -248,7 +248,7 @@ clean:
 Standalone, not wired into `server.fg`. Catches 90% of bring-up bugs.
 
 ```flow-wing
-bring 'mongo-Module.fg'
+bring "mongo-Module.fg"
 bring io
 bring Err
 
