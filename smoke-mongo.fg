@@ -9,6 +9,7 @@ fun _mongo_get_collection(client: as int64, db: as str, coll: as str) -> as int6
 fun _mongo_insert_one(coll: as int64, json: as str) -> as int64 decl
 fun _mongo_insert_many(coll: as int64, jsonArr: as str) -> as int64 decl
 fun _mongo_count(coll: as int64, filterJson: as str) -> as int64 decl
+fun _mongo_find_one(coll: as int64, filterJson: as str) -> as str decl
 fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
@@ -47,6 +48,13 @@ fun fg_main() -> nthg {
     var filter_json: str = "{\"k\":\"smoke\"}"
     var n: int64 = _mongo_count(coll, filter_json)
     io::printLogln("count k=smoke: " + n, "cyan")
+    var find_filter: str = "{\"k\":\"smoke\"}"
+    var one: str = _mongo_find_one(coll, find_filter)
+    if one == "" {
+        io::printErrorLogln("find_one empty/err: " + _mongo_last_error(), "red")
+    } else {
+        io::printLogln("find_one: " + one, "white")
+    }
     _mongo_client_close(h)
     io::printLogln("closed cleanly", "cyan")
 }

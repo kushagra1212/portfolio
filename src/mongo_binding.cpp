@@ -19,6 +19,7 @@ static int64_t _alloc_collection_slot() {
 }
 
 thread_local std::string _last_error;
+thread_local std::string _find_one_result;
 
 static std::once_flag _init_flag;
 static void _ensure_init() {
@@ -194,6 +195,42 @@ int64_t _mongo_count(int64_t coll_h, const char* filterJson) {
         return -1;
     }
     return n;
+}
+
+const char* _mongo_find_one(int64_t coll_h, const char* filterJson) {
+    _last_error.clear();
+    _find_one_result.clear();
+    if (coll_h <= 0 || coll_h >= MAX_COLLECTIONS || _collections[coll_h] == nullptr) {
+        _last_error = "mongo: invalid collection handle";
+        return _find_one_result.c_str();
+    }
+    const char* fj = (filterJson == nullptr || *filterJson == '\0') ? "{}" : filterJson;
+    bson_error_t err;
+    bson_t* filter = bson_new_from_json(reinterpret_cast<const uint8_t*>(fj), -1, &err);
+    if (filter == nullptr) {
+        _last_error = std::string("mongo: bad filter json: ") + err.message;
+        return _find_one_result.c_str();
+    }
+    bson_t opts = BSON_INITIALIZER;
+    BSON_APPEND_INT64(&opts, "limit", 1);
+    mongoc_cursor_t* cur = mongoc_collection_find_with_opts(
+        _collections[coll_h], filter, &opts, nullptr);
+    bson_destroy(filter);
+    bson_destroy(&opts);
+
+    const bson_t* doc = nullptr;
+    if (mongoc_cursor_next(cur, &doc)) {
+        char* json = bson_as_relaxed_extended_json(doc, nullptr);
+        if (json != nullptr) {
+            _find_one_result = json;
+            bson_free(json);
+        }
+    } else if (mongoc_cursor_error(cur, &err)) {
+        _last_error = err.message;
+    }
+    // empty result = "" with no error
+    mongoc_cursor_destroy(cur);
+    return _find_one_result.c_str();
 }
 
 const char* _mongo_last_error() { return _last_error.c_str(); }
