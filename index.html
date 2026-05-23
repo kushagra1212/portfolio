@@ -43,10 +43,10 @@
 <header class="topbar">
   <div class="brand"><span class="prompt">&gt;_</span> kushagra.fg</div>
   <nav class="topnav">
-    <a href="#parse">projects</a>
-    <a href="#opt">experience</a>
-    <a href="#repl">repl</a>
-    <a href="#codegen">contact</a>
+    <a href="#parse" data-cta="nav_projects">projects</a>
+    <a href="#opt" data-cta="nav_experience">experience</a>
+    <a href="#repl" data-cta="nav_repl">repl</a>
+    <a href="#codegen" data-cta="nav_contact">contact</a>
   </nav>
 </header>
 
@@ -66,17 +66,16 @@
         <span class="line">Rathore</span>
       </h1>
       <p class="lede">
-        I ship products end-to-end. When the tooling got in my way, I
-        <strong>built my own language</strong> — and this page is
-        <a class="lede-link" href="https://flowwing.frii.site/" target="_blank" rel="noopener">served by it</a>.
+        I write production software end-to-end — including the compiler that
+        <a class="lede-link" href="https://flowwing.frii.site/" target="_blank" rel="noopener">serves this page</a>.
       </p>
       <p class="hero-meta">
         <b id="yrsExp">—</b> full-time experience <span class="muted-note">(post-internship)</span>
         <span class="dot-sep">·</span> full-stack &amp; systems
       </p>
       <div class="hero-cta">
-        <a href="#repl" class="btn btn-primary">Open the REPL ↵</a>
-        <a href="#parse" class="btn btn-ghost">Read the AST ↓</a>
+        <a href="#repl" class="btn btn-primary" data-cta="hero_open_repl">Open the REPL ↵</a>
+        <a href="#parse" class="btn btn-ghost" data-cta="hero_read_ast">Read the AST ↓</a>
         <span class="avail"><i></i> open to work</span>
       </div>
     </div>
@@ -112,7 +111,7 @@
       </header>
       <p>Experimental language blending static + dynamic typing. Custom Lexer, Parser, IR. <b>AOT &amp; JIT</b> compilers, a REPL, garbage collection, modules, OOP. Full <b>LSP</b> for VS Code + build servers. Actively versioned<span id="fgVer" class="fg-ver"></span>, with large multi-file changes across the compiler.</p>
       <ul class="node-chips"><li>Lexer</li><li>Parser</li><li>IR</li><li>AOT</li><li>JIT</li><li>REPL</li><li>GC</li><li>LSP</li><li>GTest</li></ul>
-      <footer><span class="node-links"><a href="https://flowwing.frii.site/" target="_blank" rel="noopener">website ↗</a><a href="https://github.com/kushagra1212/Flow-Wing" target="_blank" rel="noopener">github ↗</a></span><span>this site is served by it · server.fg</span></footer>
+      <footer><span class="node-links"><a href="https://flowwing.frii.site/" target="_blank" rel="noopener" data-cta="proj_flowwing_site">website ↗</a><a href="https://github.com/kushagra1212/Flow-Wing" target="_blank" rel="noopener" data-cta="proj_flowwing_github">github ↗</a></span><span>this site is served by it · server.fg</span></footer>
     </article>
 
     <div class="ast-branch">
@@ -120,7 +119,7 @@
         <header><span class="node-kind">AppDecl</span><h3>Foundo — AI lost &amp; found</h3><span class="node-tag">React Native</span></header>
         <p>Solo, production Android app. AI auto-matching of lost↔found reports, real-time chat over <b>WebSockets</b>, free OSS map via WebView (zero Google Maps cost). Backed by Node/Express, AWS RDS MySQL + S3, Docker. Tested with Jest + Detox E2E.</p>
         <ul class="node-chips"><li>RN/Expo</li><li>Node</li><li>Express</li><li>MySQL</li><li>S3</li><li>Docker</li><li>WebSockets</li><li>Detox</li></ul>
-        <footer><a href="https://github.com/kushagra1212/foundo-app" target="_blank" rel="noopener">github ↗</a><span>first mobile app · shipped to production</span></footer>
+        <footer><a href="https://github.com/kushagra1212/foundo-app" target="_blank" rel="noopener" data-cta="proj_foundo_github">github ↗</a><span>first mobile app · shipped to production</span></footer>
       </article>
 
       <article class="node" data-tilt>
@@ -134,7 +133,7 @@
         <header><span class="node-kind">DeclList</span><h3>+ more</h3><span class="node-tag">additional</span></header>
         <p><b>AnimeHub</b> — content discovery &amp; cataloging. <b>Coin-Tracker-Interactive</b> — live crypto metrics. <b>YouTube Downloader</b> — multi-format, React. <b>Voice News</b> — voice-driven news portal.</p>
         <ul class="node-chips"><li>AnimeHub</li><li>Coin-Tracker</li><li>YT-DL</li><li>Voice-News</li></ul>
-        <footer><a href="https://github.com/kushagra1212" target="_blank" rel="noopener">all repos ↗</a><span>type <code>projects</code> in the REPL</span></footer>
+        <footer><a href="https://github.com/kushagra1212" target="_blank" rel="noopener" data-cta="proj_all_repos">all repos ↗</a><span>type <code>projects</code> in the REPL</span></footer>
       </article>
     </div>
   </div>
@@ -271,25 +270,25 @@
   <div class="emit">
     <pre class="emit-log" id="emitLog" aria-hidden="true"></pre>
     <div class="emit-links">
-      <a class="emit-link" href="mailto:kushagrarathore002@gmail.com">
+      <a class="emit-link" href="mailto:kushagrarathore002@gmail.com" data-cta="contact_email">
         <b>email</b><span>kushagrarathore002@gmail.com</span>
       </a>
-      <a class="emit-link" href="https://drive.google.com/file/d/17zyixC8Zl0CulGMdi2onaBDnd5dJWuov/view?usp=sharing" target="_blank" rel="noopener">
+      <a class="emit-link" href="https://drive.google.com/file/d/17zyixC8Zl0CulGMdi2onaBDnd5dJWuov/view?usp=sharing" target="_blank" rel="noopener" data-cta="contact_resume">
         <b>résumé</b><span>view PDF ↗</span>
       </a>
-      <a class="emit-link" href="tel:+919755912802">
+      <a class="emit-link" href="tel:+919755912802" data-cta="contact_phone">
         <b>phone</b><span>+91 97559 12802</span>
       </a>
-      <a class="emit-link" href="https://github.com/kushagra1212" target="_blank" rel="noopener">
+      <a class="emit-link" href="https://github.com/kushagra1212" target="_blank" rel="noopener" data-cta="contact_github">
         <b>github</b><span>@kushagra1212 ↗</span>
       </a>
-      <a class="emit-link" href="https://www.linkedin.com/in/kushagra1212" target="_blank" rel="noopener" data-verify>
-        <b>linkedin</b><span>in/kushagra1212 ↗</span>
+      <a class="emit-link" href="https://www.linkedin.com/in/kushagra-rathore/" target="_blank" rel="noopener" data-cta="contact_linkedin">
+        <b>linkedin</b><span>in/kushagra-rathore ↗</span>
       </a>
-      <a class="emit-link" href="https://leetcode.com/u/kushagra1212" target="_blank" rel="noopener" data-verify>
+      <a class="emit-link" href="https://leetcode.com/u/kushagra1212" target="_blank" rel="noopener" data-verify data-cta="contact_leetcode">
         <b>leetcode</b><span>1851 · solve ↗</span>
       </a>
-      <a class="emit-link" href="https://medium.com/@kushagrarathore002" target="_blank" rel="noopener">
+      <a class="emit-link" href="https://medium.com/@kushagrarathore002" target="_blank" rel="noopener" data-cta="contact_medium">
         <b>medium</b><span>articles ↗</span>
       </a>
     </div>
@@ -309,5 +308,6 @@
 <script src="assets/bg.js"></script>
 <script src="assets/pipeline.js"></script>
 <script src="assets/compiler.js"></script>
+<script src="assets/track.js" defer></script>
 </body>
 </html>
