@@ -1,19 +1,8 @@
 /; smoke-mongo.fg — incremental smoke test for mongo-Module.fg
 /; Runs against mongodb://127.0.0.1:27017 default.
 
+bring "mongo-Module.fg"
 bring io
-
-fun _mongo_client_new(uri: as str) -> as int64 decl
-fun _mongo_client_close(h: as int64) -> as nthg decl
-fun _mongo_get_collection(client: as int64, db: as str, coll: as str) -> as int64 decl
-fun _mongo_insert_one(coll: as int64, json: as str) -> as int64 decl
-fun _mongo_insert_many(coll: as int64, jsonArr: as str) -> as int64 decl
-fun _mongo_count(coll: as int64, filterJson: as str) -> as int64 decl
-fun _mongo_find_one(coll: as int64, filterJson: as str) -> as str decl
-fun _mongo_find(coll: as int64, filterJson: as str, limit: as int64) -> as int64 decl
-fun _mongo_cursor_next(cur: as int64) -> as str decl
-fun _mongo_cursor_close(cur: as int64) -> as nthg decl
-fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
     var uri: str = "mongodb://127.0.0.1:27017"
