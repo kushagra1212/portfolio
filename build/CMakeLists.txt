@@ -8,7 +8,7 @@ pkg_check_modules(MONGOC REQUIRED mongoc2)
 pkg_check_modules(BSON   REQUIRED bson2)
 
 add_library(flowwing_mongo STATIC ../src/mongo_binding.cpp)
-target_include_directories(flowwing_mongo PUBLIC
+target_include_directories(flowwing_mongo PRIVATE
   ${MONGOC_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS} ../src)
-target_link_libraries(flowwing_mongo PUBLIC
+target_link_libraries(flowwing_mongo PRIVATE
   ${MONGOC_LIBRARIES} ${BSON_LIBRARIES})
