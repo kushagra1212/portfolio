@@ -37,24 +37,6 @@ python3 -m http.server 8765
 
 `server.fg` reads the Mongo URI from `argv[1]` and the admin token from `argv[2]`. Both fall back to local-dev defaults when unset. Atlas provisioning + Docker Compose env wiring: [ATLAS-SETUP.md](ATLAS-SETUP.md).
 
-## Analytics
-
-The site captures lightweight interaction events to understand which sections and CTAs actually get engagement. Events are written to MongoDB (`portfolio.events`) and viewed at `/admin/<token>`.
-
-**What's captured per event:** event type, timestamp, session id, page, viewport size, browser/device profile (from user-agent), approximate location (country/city) and IP from a client-side lookup against [ipwho.is](https://ipwho.is). Event-specific fields are kept minimal — for selection / copy / paste only the **length** is sent, never the text.
-
-**Event types:** `page_load`, `scroll` (depth thresholds), `section_view`, `cta_click`, `background_click`, `selection`, `copy`, `paste`, `contextmenu`, `repl_command`, `repl_focus`, `hover_dwell`, `visibility`, `viewport_resize`, `page_exit`.
-
-**Dashboard:** overview stats (events, unique visitors, sessions, bounce rate, avg session duration), top CTAs, section engagement, REPL command frequency, contact-channel conversion, visitor list with location + ISP, per-session timeline drill-down, live event feed.
-
-**Opt out:** on any browser used to view the site, run once in DevTools:
-
-```js
-localStorage.setItem("fw_is_me", "1");
-```
-
-Events from that browser then carry `is_self: true` and are excluded from the dashboard by default.
-
 ## Files
 
 ```
