@@ -1,10 +1,2 @@
-# CMake/build artifacts under build/, except tracked source files
-build/out/
-build/bin/
-build/CMakeFiles/
-build/CMakeCache.txt
-build/cmake_install.cmake
-build/Makefile.cmake
-build/*.dir/
-compile_commands.json
 .claude
+.cache

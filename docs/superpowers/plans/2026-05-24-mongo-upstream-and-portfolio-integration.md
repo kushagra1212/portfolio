@@ -299,15 +299,14 @@ Open `fw-modules/raylib_module/CMakeLists.txt`. Use it as the template; adapt as
 
 add_library(flowwing_mongo STATIC libflowwing_mongo.cpp)
 
-# Locate the static archives that mongo_c_driver_external installed.
-# Filenames depend on mongo-c-driver's build (Task A1 step 2 reported them).
-# Common names: libmongoc-static-1.0.a / libbson-static-1.0.a
-find_library(MONGOC_LIB NAMES mongoc-static-1.0 mongoc-1.0 PATHS "${DEPS_INSTALL_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
-find_library(BSON_LIB   NAMES bson-static-1.0   bson-1.0   PATHS "${DEPS_INSTALL_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
+# Locate the static archives that mongo-c-driver 2.3.0 installed.
+# Verified actual filenames (Task A1 side-build): libmongoc2.a + libbson2.a.
+find_library(MONGOC_LIB NAMES mongoc2 PATHS "${DEPS_INSTALL_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
+find_library(BSON_LIB   NAMES bson2   PATHS "${DEPS_INSTALL_DIR}/lib" NO_DEFAULT_PATH REQUIRED)
 
 target_include_directories(flowwing_mongo PRIVATE
-    "${DEPS_INSTALL_DIR}/include/mongoc-1.0"
-    "${DEPS_INSTALL_DIR}/include/bson-1.0"
+    "${DEPS_INSTALL_DIR}/include/mongoc-2.3.0"
+    "${DEPS_INSTALL_DIR}/include/bson-2.3.0"
 )
 
 # libbson 2.x public typedef loses an alignment attribute on bson_t*; pointers
