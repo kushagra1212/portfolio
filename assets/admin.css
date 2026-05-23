@@ -235,6 +235,32 @@ button:hover { background: var(--border); }
 
 .empty { text-align: center; padding: 2em; color: var(--fg-faint); font-style: italic; }
 
+.page-foot {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--border-soft);
+  color: var(--fg-dim);
+  font-size: 0.78em;
+  line-height: 1.55;
+}
+.page-foot p { margin: 0.4em 0; }
+.page-foot b { color: var(--fg); }
+.page-foot code {
+  background: var(--panel-2);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  color: var(--accent-2);
+  font-size: 0.92em;
+}
+h2 small {
+  color: var(--fg-faint);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 0.4em;
+  font-size: 0.85em;
+}
+
 /* Contact channels grid */
 .panel-wide { grid-column: 1 / -1; }
 .contact-grid {

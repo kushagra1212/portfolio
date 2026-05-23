@@ -7,8 +7,21 @@
   var rangeSel = $("range");
   var refreshBtn = $("refresh");
   var autoChk = $("auto");
+  var includeSelfChk = $("includeSelf");
   var statusEl = $("status");
   var metaEl = $("meta");
+
+  // Persist "include my events" toggle across sessions (per-browser).
+  try {
+    includeSelfChk.checked = localStorage.getItem("admin_include_self") === "1";
+  } catch (e) { /* ignore */ }
+  includeSelfChk.addEventListener("change", function () {
+    try {
+      if (includeSelfChk.checked) localStorage.setItem("admin_include_self", "1");
+      else localStorage.removeItem("admin_include_self");
+    } catch (e) { /* ignore */ }
+    renderAll();
+  });
 
   var modal = $("modal");
   var modalTitle = $("modalTitle");
@@ -68,6 +81,11 @@
     if (!hours) return events;
     var cutoff = Date.now() - hours * 3600 * 1000;
     return events.filter(function (e) { return e.ts >= cutoff; });
+  }
+
+  function filterSelf(events) {
+    if (includeSelfChk.checked) return events;
+    return events.filter(function (e) { return !e.is_self; });
   }
 
   function browserOf(ua) {
@@ -520,7 +538,12 @@
   // ---- main render ----
   function renderAll() {
     var inRange = filterByRange(all);
-    metaEl.textContent = "· " + all.length + " events · " + inRange.length + " in range · updated " + tsfmt(Date.now());
+    var selfCount = inRange.filter(function (e) { return e.is_self; }).length;
+    inRange = filterSelf(inRange);
+    var hint = includeSelfChk.checked
+      ? "incl. " + selfCount + " self"
+      : (selfCount > 0 ? "excl. " + selfCount + " self" : "no self events");
+    metaEl.textContent = "· " + all.length + " events · " + inRange.length + " in range · " + hint + " · updated " + tsfmt(Date.now());
     renderOverview(inRange);
     renderVisitors(inRange);
     renderLocations(inRange);

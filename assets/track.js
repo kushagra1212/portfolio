@@ -11,8 +11,20 @@
 (function () {
   var SESSION_KEY = "fw_session_id";
   var GEO_KEY = "fw_geo";        // cached IP+geo for this session
+  var SELF_KEY = "fw_is_me";     // localStorage flag — set on your own devices
   var ENDPOINT = "/track";
-  var GEO_URL = "https://ipapi.co/json/";  // free 1k/day, returns IP + city + country + region + org
+  // ipwho.is: free, no key, HTTPS, returns ip + country + city + region + connection.isp.
+  // Geo is best-effort: free databases (MaxMind / IP2Location) tag CGNAT exits to
+  // the ISP's POP city, not the user. Expect "approx" accuracy especially on
+  // Indian mobile networks (Jio/Airtel) where exit IPs pool across regions.
+  var GEO_URL = "https://ipwho.is/";
+
+  // "Is this me?" flag. Set once on your own browser/device by running
+  //   localStorage.setItem("fw_is_me", "1")
+  // in the portfolio's DevTools console. Persists across sessions on that
+  // browser. Dashboard hides events where is_self === true by default.
+  var isSelf = false;
+  try { isSelf = localStorage.getItem(SELF_KEY) === "1"; } catch (e) { /* ignore */ }
 
   function sessionId() {
     var s = sessionStorage.getItem(SESSION_KEY);
@@ -42,15 +54,18 @@
     return fetch(GEO_URL, { credentials: "omit" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        if (!j) return null;
+        // ipwho.is returns {success: true, ip, country, country_code, region,
+        // city, latitude, longitude, connection: {org, isp, ...}}.
+        // On failure: {success: false, message: ...}.
+        if (!j || j.success === false) return null;
         geo = {
           ip: j.ip || null,
-          country: j.country_name || null,
+          country: j.country || null,
           country_code: j.country_code || null,
           region: j.region || null,
           city: j.city || null,
-          org: j.org || null,
-          asn: j.asn || null,
+          org: (j.connection && (j.connection.isp || j.connection.org)) || null,
+          asn: (j.connection && j.connection.asn) || null,
           lat: j.latitude || null,
           lng: j.longitude || null,
         };
@@ -88,6 +103,7 @@
       payload.city = geo.city;
       payload.org = geo.org;
     }
+    if (isSelf) payload.is_self = true;
     try {
       var body = JSON.stringify(payload);
       if (navigator.sendBeacon) {

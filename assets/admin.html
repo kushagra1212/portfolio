@@ -17,6 +17,7 @@
         <option value="168">last 7d</option>
         <option value="0">all time</option>
       </select>
+      <label class="auto"><input type="checkbox" id="includeSelf"> include my events</label>
       <button id="refresh">refresh</button>
       <label class="auto"><input type="checkbox" id="auto" checked> auto-refresh 15s</label>
       <span id="status"></span>
@@ -64,7 +65,7 @@
       <div id="visitorList" class="visitor-list"></div>
     </div>
     <div class="panel">
-      <h2>Locations</h2>
+      <h2>Locations <small>(IP-based, approx)</small></h2>
       <div id="locations" class="bars"></div>
     </div>
   </section>
@@ -87,6 +88,16 @@
       <div id="liveFeed" class="live"></div>
     </div>
   </section>
+
+  <footer class="page-foot">
+    <p><b>Hide your own visits:</b> on each browser/device where you load the portfolio, open DevTools console once and run
+      <code>localStorage.setItem("fw_is_me", "1")</code> — events from that browser will be tagged
+      <code>is_self: true</code> and hidden here unless you tick <i>include my events</i>.
+      Undo with <code>localStorage.removeItem("fw_is_me")</code>.</p>
+    <p><b>About locations:</b> IP geolocation uses free databases that tag CGNAT exit IPs to the ISP's POP city,
+      not where the user actually is. On Indian mobile networks (Jio/Airtel) expect city-level inaccuracy.
+      Country is usually right.</p>
+  </footer>
 
   <!-- Per-session timeline modal -->
   <div id="modal" class="modal" hidden>
