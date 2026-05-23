@@ -298,3 +298,31 @@ button:hover { background: var(--border); }
 }
 .contact-card.zero { opacity: 0.55; }
 .contact-card.zero .clicks { color: var(--fg-faint); }
+
+/* Visitors list */
+.visitor-list { display: flex; flex-direction: column; gap: 0.4em; max-height: 480px; overflow-y: auto; }
+.visitor-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 0.6em;
+  align-items: center;
+  padding: 0.55em 0.7em;
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 0.82em;
+}
+.visitor-row .flag {
+  font-size: 1.2em;
+  line-height: 1;
+  text-align: center;
+}
+.visitor-row .body { overflow: hidden; }
+.visitor-row .ip { color: var(--accent-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.visitor-row .loc { color: var(--fg); }
+.visitor-row .org { color: var(--fg-dim); font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.visitor-row .nums { text-align: right; color: var(--fg-dim); font-variant-numeric: tabular-nums; font-size: 0.8em; }
+.visitor-row .nums .num { color: var(--fg); font-weight: 600; }
+.visitor-row.you { border-color: var(--accent); }
+.visitor-row.unknown .flag { color: var(--fg-faint); }
+.visitor-row.unknown .ip { color: var(--fg-faint); }

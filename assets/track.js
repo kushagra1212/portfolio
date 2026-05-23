@@ -10,7 +10,9 @@
 // Session id lives in sessionStorage so a session = one tab visit.
 (function () {
   var SESSION_KEY = "fw_session_id";
+  var GEO_KEY = "fw_geo";        // cached IP+geo for this session
   var ENDPOINT = "/track";
+  var GEO_URL = "https://ipapi.co/json/";  // free 1k/day, returns IP + city + country + region + org
 
   function sessionId() {
     var s = sessionStorage.getItem(SESSION_KEY);
@@ -21,6 +23,41 @@
       sessionStorage.setItem(SESSION_KEY, s);
     }
     return s;
+  }
+
+  // Cached IP+geo per session. ipapi.co is called at most once per session.
+  // If the lookup fails (offline / rate-limit / blocked by uBlock), `geo` stays
+  // null and events ship without ip — tracker continues to work degraded.
+  // Privacy: IPs are personal data in many jurisdictions. For this portfolio
+  // they're stored in the same mongo collection as the events; documented in
+  // ATLAS-SETUP.md / docs.
+  var geo = null;
+  try {
+    var cached = sessionStorage.getItem(GEO_KEY);
+    if (cached) geo = JSON.parse(cached);
+  } catch (e) { /* ignore */ }
+
+  function fetchGeo() {
+    if (geo) return Promise.resolve(geo);
+    return fetch(GEO_URL, { credentials: "omit" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        if (!j) return null;
+        geo = {
+          ip: j.ip || null,
+          country: j.country_name || null,
+          country_code: j.country_code || null,
+          region: j.region || null,
+          city: j.city || null,
+          org: j.org || null,
+          asn: j.asn || null,
+          lat: j.latitude || null,
+          lng: j.longitude || null,
+        };
+        try { sessionStorage.setItem(GEO_KEY, JSON.stringify(geo)); } catch (e) {}
+        return geo;
+      })
+      .catch(function () { return null; });
   }
 
   // Find which top-level <section id="..."> the element lives in (or null).
@@ -43,6 +80,14 @@
       },
       evt
     );
+    if (geo) {
+      payload.ip = geo.ip;
+      payload.country = geo.country;
+      payload.country_code = geo.country_code;
+      payload.region = geo.region;
+      payload.city = geo.city;
+      payload.org = geo.org;
+    }
     try {
       var body = JSON.stringify(payload);
       if (navigator.sendBeacon) {
@@ -61,6 +106,29 @@
     } catch (e) {
       /* silent — tracker must never break the page */
     }
+  }
+
+  // Buffer events fired before geo resolved (we want the page_load to carry
+  // ip when possible). Flush after fetchGeo() resolves OR after 1.5s timeout.
+  var pendingEvents = [];
+  var geoSettled = false;
+  var realSend = send;
+  send = function (evt) {
+    if (geo || geoSettled) return realSend(evt);
+    pendingEvents.push(evt);
+  };
+  function flushPending() {
+    if (geoSettled) return;
+    geoSettled = true;
+    pendingEvents.forEach(realSend);
+    pendingEvents = [];
+  }
+  if (geo) {
+    // Already cached from a prior page load this session — flush immediately.
+    geoSettled = true;
+  } else {
+    fetchGeo().then(flushPending);
+    setTimeout(flushPending, 1500); // hard ceiling — don't block tracking
   }
 
   // ---- 1) page_load: rich one-time profile ----

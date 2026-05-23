@@ -95,6 +95,49 @@
   }
 
   // ---- aggregations ----
+  // Group events by IP. Each "visitor" = one IP across all their sessions.
+  // Events without an ip (e.g. tracker fell back to no-geo) go under "(no ip)".
+  function byVisitor(events) {
+    var map = {};
+    events.forEach(function (e) {
+      var ip = e.ip || "(no ip)";
+      if (!map[ip]) {
+        map[ip] = {
+          ip: ip,
+          first: e.ts,
+          last: e.ts,
+          events: 0,
+          sessions: {},
+          country: e.country || null,
+          country_code: e.country_code || null,
+          city: e.city || null,
+          region: e.region || null,
+          org: e.org || null,
+        };
+      }
+      var b = map[ip];
+      b.events++;
+      if (e.session) b.sessions[e.session] = true;
+      if (e.ts < b.first) b.first = e.ts;
+      if (e.ts > b.last) b.last = e.ts;
+      // Geo fields may be missing on later events if geo lookup happened mid-session
+      if (!b.country && e.country) b.country = e.country;
+      if (!b.country_code && e.country_code) b.country_code = e.country_code;
+      if (!b.city && e.city) b.city = e.city;
+      if (!b.region && e.region) b.region = e.region;
+      if (!b.org && e.org) b.org = e.org;
+    });
+    return map;
+  }
+
+  // Country code (ISO 3166-1 alpha-2) -> emoji flag.
+  function flagFor(cc) {
+    if (!cc || cc.length !== 2) return "·";
+    var A = 0x1F1E6;
+    return String.fromCodePoint(A + cc.toUpperCase().charCodeAt(0) - 65)
+         + String.fromCodePoint(A + cc.toUpperCase().charCodeAt(1) - 65);
+  }
+
   function bySession(events) {
     var map = {};
     events.forEach(function (e) {
@@ -187,9 +230,18 @@
     });
     var bounceRate = sids.length ? Math.round((bounced / sids.length) * 100) : 0;
 
+    var visitors = byVisitor(events);
+    var visitorCount = Object.keys(visitors).filter(function (ip) { return ip !== "(no ip)"; }).length;
+    var countries = {};
+    Object.keys(visitors).forEach(function (ip) {
+      var v = visitors[ip];
+      if (v.country) countries[v.country] = true;
+    });
     var cards = [
       { num: events.length, label: "events" },
+      { num: visitorCount, label: "unique visitors", className: "muted" },
       { num: sids.length, label: "sessions" },
+      { num: Object.keys(countries).length, label: "countries" },
       { num: pageLoads, label: "page loads" },
       { num: ctaClicks, label: "CTA clicks" },
       { num: replCmds, label: "REPL commands" },
@@ -205,6 +257,57 @@
         + '<span class="label">' + esc(c.label) + '</span>'
         + '</div>';
     }).join("");
+  }
+
+  function renderVisitors(events) {
+    var visitors = byVisitor(events);
+    var ips = Object.keys(visitors);
+    // sort by recency, "no ip" bucket last
+    ips.sort(function (a, b) {
+      if (a === "(no ip)") return 1;
+      if (b === "(no ip)") return -1;
+      return visitors[b].last - visitors[a].last;
+    });
+    var realCount = ips.filter(function (i) { return i !== "(no ip)"; }).length;
+    $("visitorSummary").textContent = "· " + realCount + " unique IPs" + (visitors["(no ip)"] ? " + " + Object.keys(visitors["(no ip)"].sessions).length + " no-ip" : "");
+    var html = ips.slice(0, 60).map(function (ip) {
+      var v = visitors[ip];
+      var sessCount = Object.keys(v.sessions).length;
+      var loc = [v.city, v.region, v.country].filter(Boolean).join(", ") || "(unknown location)";
+      var cls = ip === "(no ip)" ? "visitor-row unknown" : "visitor-row";
+      return '<div class="' + cls + '" title="last: ' + esc(dfmt(v.last)) + '">'
+        + '<div class="flag">' + esc(flagFor(v.country_code)) + '</div>'
+        + '<div class="body">'
+          + '<div class="ip">' + esc(ip) + '</div>'
+          + '<div class="loc">' + esc(loc) + '</div>'
+          + (v.org ? '<div class="org">' + esc(v.org) + '</div>' : '')
+        + '</div>'
+        + '<div class="nums">'
+          + '<div><span class="num">' + sessCount + '</span> sess</div>'
+          + '<div><span class="num">' + v.events + '</span> events</div>'
+          + '<div>' + durFmt(v.last - v.first) + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join("");
+    $("visitorList").innerHTML = html || '<div class="empty">no visitors yet</div>';
+  }
+
+  function renderLocations(events) {
+    // Aggregate visitors per "city · country" (or just country if no city)
+    var visitors = byVisitor(events);
+    var counts = {};
+    Object.keys(visitors).forEach(function (ip) {
+      if (ip === "(no ip)") return;
+      var v = visitors[ip];
+      var loc;
+      if (v.city && v.country) loc = flagFor(v.country_code) + " " + v.city + ", " + v.country;
+      else if (v.country) loc = flagFor(v.country_code) + " " + v.country;
+      else loc = "(unknown)";
+      counts[loc] = (counts[loc] || 0) + 1;
+    });
+    var rows = Object.keys(counts).map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+    renderBars("locations", rows);
   }
 
   function renderContactChannels(events) {
@@ -419,6 +522,8 @@
     var inRange = filterByRange(all);
     metaEl.textContent = "· " + all.length + " events · " + inRange.length + " in range · updated " + tsfmt(Date.now());
     renderOverview(inRange);
+    renderVisitors(inRange);
+    renderLocations(inRange);
     renderContactChannels(inRange);
     renderTopCtas(inRange);
     renderSectionEng(inRange);
