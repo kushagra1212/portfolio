@@ -95,6 +95,31 @@ int64_t _mongo_get_collection(int64_t client_h, const char* db, const char* coll
     return h;
 }
 
+int64_t _mongo_insert_one(int64_t coll_h, const char* json) {
+    _last_error.clear();
+    if (coll_h <= 0 || coll_h >= MAX_COLLECTIONS || _collections[coll_h] == nullptr) {
+        _last_error = "mongo: invalid collection handle";
+        return 0;
+    }
+    if (json == nullptr) {
+        _last_error = "mongo: null json";
+        return 0;
+    }
+    bson_error_t err;
+    bson_t* doc = bson_new_from_json(reinterpret_cast<const uint8_t*>(json), -1, &err);
+    if (doc == nullptr) {
+        _last_error = std::string("mongo: bad json: ") + err.message;
+        return 0;
+    }
+    bool ok = mongoc_collection_insert_one(_collections[coll_h], doc, nullptr, nullptr, &err);
+    bson_destroy(doc);
+    if (!ok) {
+        _last_error = err.message;
+        return 0;
+    }
+    return 1;
+}
+
 const char* _mongo_last_error() { return _last_error.c_str(); }
 
 } // extern "C"

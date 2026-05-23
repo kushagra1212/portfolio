@@ -6,6 +6,7 @@ bring io
 fun _mongo_client_new(uri: as str) -> as int64 decl
 fun _mongo_client_close(h: as int64) -> as nthg decl
 fun _mongo_get_collection(client: as int64, db: as str, coll: as str) -> as int64 decl
+fun _mongo_insert_one(coll: as int64, json: as str) -> as int64 decl
 fun _mongo_last_error() -> as str decl
 
 fun fg_main() -> nthg {
@@ -25,6 +26,14 @@ fun fg_main() -> nthg {
         return :
     }
     io::printLogln("collection handle=" + coll, "cyan")
+    var doc_json: str = "{\"k\":\"smoke\",\"n\":1}"
+    var ok: int64 = _mongo_insert_one(coll, doc_json)
+    if ok == 0 {
+        io::printErrorLogln("insert_one failed: " + _mongo_last_error(), "red")
+        _mongo_client_close(h)
+        return :
+    }
+    io::printLogln("insert_one ok", "cyan")
     _mongo_client_close(h)
     io::printLogln("closed cleanly", "cyan")
 }
