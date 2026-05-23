@@ -10,9 +10,16 @@
 /;
 /;  So "served by Flow-Wing" is literal, not metaphor.
 /;
-/;  Run (JIT):   flowwing-jit server.fg
-/;  Run (AOT):   flowwing server.fg -o career && ./career
+/;  Run (AOT):
+/;      flowwing server.fg -o career && ./career
+/;      ./career "<mongo-uri>" "<admin-token>"
+/;
+/;  Args (both optional):
+/;    arg1 — MONGO_URI    (fallback: mongodb://127.0.0.1:27017)
+/;    arg2 — ADMIN_TOKEN  (fallback: dev-admin-token)
+/;
 /;  Then open:   http://127.0.0.1:8080
+/;               http://127.0.0.1:8080/admin/<token>
 /; =========================================================
 
 bring vortex
@@ -20,16 +27,47 @@ bring file
 bring text
 bring io
 bring Err
+bring sys
+bring mongo
 
 fun fg_main() -> nthg {
+    const CURRENT_DIR: str = file::__DIR__ == "" ? "." : file::__DIR__
+
+    /; ---- read CLI args for prod config ----
+    var mongoUri: str = sys::getArg(1)
+    if mongoUri == "" {
+        mongoUri = "mongodb://127.0.0.1:27017"
+        io::printLogln("MONGO_URI not provided (arg1), using local mongod", "yellow")
+    }
+    var adminToken: str = sys::getArg(2)
+    if adminToken == "" {
+        adminToken = "dev-admin-token"
+        io::printLogln("ADMIN_TOKEN not provided (arg2), using dev fallback", "yellow")
+    }
+    var adminPathPrefix: str = "/admin/" + adminToken
+    var adminEventsPath: str = adminPathPrefix + "/events"
+
+    /; ---- open mongo BEFORE binding the socket (libmongoc init plays poorly
+    /;      with whatever vortex sets up at listen time) ----
+    var mc: mongo::Client = new mongo::Client(mongoUri)
+    if !mc.isOk() {
+        io::printErrorLogln("mongo connect failed: " + mongo::lastError(), "red")
+        return :
+    }
+    var dbName: str = "portfolio"
+    var collName: str = "events"
+    var events: mongo::Collection = mc.getCollection(dbName, collName)
+    io::printLogln("mongo connected: " + mongoUri, "green")
+
+    /; ---- now bind the vortex server ----
     var app: vortex::Server = new vortex::Server()
     var err: Err::Result = app.listen(8080)
     if Err::isErr(err) {
         io::printErrorLogln("Failed to bind :8080 — is it already in use?", "red")
+        mc.close()
         return :
     }
 
-    const CURRENT_DIR: str = file::__DIR__ == "" ? "." : file::__DIR__
     io::printLogln("The Career Compiler — served by Flow-Wing at http://127.0.0.1:8080", "cyan")
 
     while true {
@@ -42,8 +80,55 @@ fun fg_main() -> nthg {
         var path: str = req.getPath()
         var pathAsText: text::Text = new text::Text(path)
 
+        /; === POST /track -> ingest one event JSON doc ===
+        if method == "POST" && path == "/track" {
+            var body: str = req.getBody()
+            if body == "" {
+                res.status(400).header("Content-Type", "text/plain").send("empty body")
+            } else {
+                var ok: bool = events.insertOne(body)
+                if ok {
+                    res.status(204).send("")
+                } else {
+                    var emsg: str = mongo::lastError()
+                    io::printErrorLogln("track insert failed: " + emsg, "red")
+                    res.status(500).header("Content-Type", "text/plain").send("track failed")
+                }
+            }
+        }
+        /; === GET /admin/<token>/events -> JSON feed of recent events ===
+        else if method == "GET" && path == adminEventsPath {
+            var allFilter: str = "{}"
+            var lim: int64 = 200
+            var cur: mongo::Cursor = events.find(allFilter, lim)
+            var s: str = cur.next()
+            var arr: str = "["
+            var first: bool = true
+            while s != "" {
+                if first {
+                    first = false
+                } else {
+                    arr = arr + ","
+                }
+                arr = arr + s
+                s = cur.next()
+            }
+            arr = arr + "]"
+            cur.close()
+            res.status(200).header("Content-Type", "application/json").send(arr)
+        }
+        /; === GET /admin/<token> -> admin dashboard HTML ===
+        else if method == "GET" && path == adminPathPrefix {
+            var adminPath: str = CURRENT_DIR + "/assets/admin.html"
+            var html: str, herr: Err::Result = file::readText(adminPath)
+            if Err::isErr(herr) {
+                res.status(500).header("Content-Type", "text/html").send("<h1>admin page missing</h1>")
+            } else {
+                res.status(200).header("Content-Type", "text/html; charset=utf-8").send(html)
+            }
+        }
         /; === GET / -> the portfolio itself ===
-        if method == "GET" && path == "/" {
+        else if method == "GET" && path == "/" {
             var indexPath: str = CURRENT_DIR + "/index.html"
             var content: str, rerr: Err::Result = file::readText(indexPath)
             if Err::isErr(rerr) {
@@ -68,6 +153,8 @@ fun fg_main() -> nthg {
                 contentType = "application/manifest+json"
             } else if pathAsText.endsWith(".ico") {
                 contentType = "image/x-icon"
+            } else if pathAsText.endsWith(".html") {
+                contentType = "text/html; charset=utf-8"
             }
             res.status(200).sendStaticFile(assetPath, contentType)
         }
