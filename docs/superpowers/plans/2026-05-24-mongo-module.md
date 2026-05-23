@@ -4,14 +4,14 @@
 
 **Goal:** Add a local Flow-Wing binding to libmongoc (`mongo-Module.fg`) in this repo, imported via `bring 'mongo-Module.fg'`, exposing CRUD-lite Mongo to `server.fg`.
 
-**Architecture:** Three layers — typed `.fg` classes → `fun _mongo_*(...) decl` FFI declarations → `extern "C"` C++ glue over libmongoc, packaged as `libflowwing_mongo.a` and linked at flowwing-jit time via `-L./build/out -l flowwing_mongo`. Handle table maps int64 ↔ `mongoc_client_t*`/`mongoc_collection_t*`/`mongoc_cursor_t*`. JSON in for writes, opaque cursor handle out for reads. Mirrors `fw-modules/raylib_module` shape.
+**Architecture:** Three layers — typed `.fg` classes → `fun _mongo_*(...) decl` FFI declarations → `extern "C"` C++ glue over libmongoc, packaged as `libflowwing_mongo.a` and linked at `flowwing` AOT-compile time via `-L./build/out -l flowwing_mongo`. Handle table maps int64 ↔ `mongoc_client_t*`/`mongoc_collection_t*`/`mongoc_cursor_t*`. JSON in for writes, opaque cursor handle out for reads. Mirrors `fw-modules/raylib_module` shape.
 
-**Tech Stack:** C++17, libmongoc + libbson (`brew install mongo-c-driver`), CMake 3.15+, GNU make, Flow-Wing 1.0.4 (`flowwing-jit`).
+**Tech Stack:** C++17, libmongoc + libbson (`brew install mongo-c-driver`), CMake 3.15+, GNU make, Flow-Wing 1.0.4 (`flowwing` AOT compiler — produces a native binary; smoke test is the compiled binary, not interpreter mode).
 
-**Testing approach (honest):** There is no Flow-Wing unit-test framework visible in this repo or in fw-modules. Each phase adds one extern, extends `smoke-mongo.fg` with one assertion, and is verified by running `flowwing-jit smoke-mongo.fg` against a local `mongod`. The smoke test grows incrementally; passing it is the gate. No mocked DB — this is an FFI binding and mocks would hide ABI/lifetime bugs.
+**Testing approach (honest):** There is no Flow-Wing unit-test framework visible in this repo or in fw-modules. Each phase adds one extern, extends `smoke-mongo.fg` with one assertion, and is verified by `make smoke` — which AOT-compiles `smoke-mongo.fg` to `build/bin/smoke-mongo` via `flowwing` and then executes the resulting binary. Runs against a local `mongod`. The smoke test grows incrementally; passing it is the gate. No mocked DB — this is an FFI binding and mocks would hide ABI/lifetime bugs.
 
 **Prerequisites verified before starting:**
-- `which flowwing-jit` returns `/opt/homebrew/bin/flowwing-jit` (already confirmed).
+- `which flowwing` returns `/opt/homebrew/bin/flowwing` (already confirmed).
 - `brew list mongo-c-driver` succeeds — if not, run `brew install mongo-c-driver cmake pkg-config`.
 - `brew services start mongodb-community` is running locally (or any reachable `mongodb://` URI is in `$MONGO_URI`).
 - Reference: spec at `docs/superpowers/specs/2026-05-24-mongo-module-design.md`.
@@ -78,19 +78,35 @@ target_link_libraries(flowwing_mongo PUBLIC
 - [ ] **Step 4: Write `build/Makefile`**
 
 ```make
-.PHONY: lib run smoke clean
+PKG_CONFIG_PATH ?= $(shell brew --prefix mongo-c-driver)/lib/pkgconfig
+export PKG_CONFIG_PATH
+
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+BIN_DIR := $(REPO_ROOT)/build/bin
+
+.PHONY: lib server smoke-bin run smoke clean
 lib:
 	cmake -S . -B out && cmake --build out
 
-run: lib
-	cd .. && flowwing-jit server.fg -L./build/out -l flowwing_mongo
+server: lib
+	mkdir -p $(BIN_DIR)
+	cd $(REPO_ROOT) && flowwing server.fg -o $(BIN_DIR)/server -L./build/out -l flowwing_mongo
 
-smoke: lib
-	cd .. && flowwing-jit smoke-mongo.fg -L./build/out -l flowwing_mongo
+run: server
+	$(BIN_DIR)/server
+
+smoke-bin: lib
+	mkdir -p $(BIN_DIR)
+	cd $(REPO_ROOT) && flowwing smoke-mongo.fg -o $(BIN_DIR)/smoke-mongo -L./build/out -l flowwing_mongo
+
+smoke: smoke-bin
+	$(BIN_DIR)/smoke-mongo
 
 clean:
-	rm -rf out
+	rm -rf out bin
 ```
+
+(AOT two-phase: `flowwing` produces a binary in `build/bin/`, then `run`/`smoke` invokes it. Task 1 also has explicit `.gitignore` entries for `build/bin/` etc.)
 
 - [ ] **Step 5: Update `.gitignore`**
 
@@ -1270,7 +1286,7 @@ Rebuild: `cd build && make clean && make smoke`. Expected: smoke passes (link li
 
 - [ ] **Step 2b: If `.a` files DO NOT exist — leave as dynamic link**
 
-Verify the `flowwing-jit ... -l flowwing_mongo` invocation still resolves libmongoc/libbson at runtime via rpath. If not, set:
+Verify the compiled binary at `build/bin/smoke-mongo` still resolves libmongoc/libbson at runtime via rpath (the AOT binary links dynamically against them when the `.a` files aren't merged). If not, set:
 
 ```sh
 export DYLD_LIBRARY_PATH="$(brew --prefix)/lib:$DYLD_LIBRARY_PATH"
@@ -1334,7 +1350,7 @@ Expected final line: `smoke ok`.
 
 ```sh
 cd build && make run
-# equivalent to: flowwing-jit server.fg -L./build/out -l flowwing_mongo
+# equivalent to: flowwing server.fg -o build/bin/server -L./build/out -l flowwing_mongo && ./build/bin/server
 ```
 
 ### Notes
@@ -1342,7 +1358,7 @@ cd build && make run
 - v1 surface: `MongoClient`, `MongoCollection` (insertOne/insertMany/findOne/find/count), `MongoCursor` (next/close).
 - JSON in for writes, relaxed extended JSON out for reads.
 - Single-client v1 (libmongoc client is not thread-safe; vortex serves single-threaded).
-- If brew ships dylib-only `mongo-c-driver`, prepend `DYLD_LIBRARY_PATH="$(brew --prefix)/lib"` to the `flowwing-jit` line.
+- If brew ships dylib-only `mongo-c-driver`, prepend `DYLD_LIBRARY_PATH="$(brew --prefix)/lib"` when executing the compiled binary (e.g. `DYLD_LIBRARY_PATH=... ./build/bin/server`).
 ```
 
 - [ ] **Step 2: Commit**

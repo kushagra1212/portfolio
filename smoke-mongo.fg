@@ -1,0 +1,23 @@
+/; smoke-mongo.fg — incremental smoke test for mongo-Module.fg
+/; Runs against mongodb://127.0.0.1:27017 default.
+
+bring io
+bring Err
+
+fun _mongo_client_new(uri: as str) -> as int64 decl
+fun _mongo_client_close(h: as int64) -> as nthg decl
+fun _mongo_last_error() -> as str decl
+
+fun fg_main() -> nthg {
+    var uri: str = "mongodb://127.0.0.1:27017"
+    var h: int64 = _mongo_client_new(uri)
+    if h == 0 {
+        io::printErrorLogln("connect failed: " + _mongo_last_error(), "red")
+        return :
+    }
+    io::printLogln("connected: handle=" + h, "cyan")
+    _mongo_client_close(h)
+    io::printLogln("closed cleanly", "cyan")
+}
+
+fg_main()
