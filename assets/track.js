@@ -12,7 +12,72 @@
   var SESSION_KEY = "fw_session_id";
   var GEO_KEY = "fw_geo";        // cached IP+geo for this session
   var SELF_KEY = "fw_is_me";     // localStorage flag — set on your own devices
+  var FIRST_TOUCH_KEY = "fw_first_touch"; // localStorage — first acquisition channel per browser
   var ENDPOINT = "/track";
+
+  // ---- traffic source classification ----
+  // Map referrer hostname -> {channel, source}. Channels:
+  //   search   organic search (google/bing/...)
+  //   social   linkedin/twitter/reddit/...
+  //   ai       chatgpt/claude/perplexity/...
+  //   referral any other site
+  //   direct   no referrer
+  //   <utm>    whatever utm_medium says (overrides hostname)
+  var SEARCH_HOSTS = /(^|\.)(google|bing|duckduckgo|yahoo|baidu|yandex|ecosia|brave|kagi|startpage)\./i;
+  var SOCIAL_HOSTS = /(^|\.)(linkedin|twitter|x|t\.co|facebook|fb|instagram|reddit|news\.ycombinator|hn\.algolia|medium|dev\.to|substack|t\.me|telegram|whatsapp|discord|threads|bsky|mastodon)\./i;
+  var AI_HOSTS = /(^|\.)(chat\.openai|chatgpt|claude\.ai|perplexity|bard\.google|gemini\.google|you\.com|phind|copilot\.microsoft)/i;
+
+  function classifyRef(refHost) {
+    if (!refHost) return { channel: "direct", source: "(direct)" };
+    var h = refHost.replace(/^www\./, "");
+    if (SEARCH_HOSTS.test(h)) return { channel: "search", source: h.split(".")[0] };
+    if (AI_HOSTS.test(h))     return { channel: "ai",     source: h };
+    if (SOCIAL_HOSTS.test(h)) return { channel: "social", source: h };
+    return { channel: "referral", source: h };
+  }
+
+  function parseUtm() {
+    var q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return {}; }
+    var out = {};
+    ["utm_source","utm_medium","utm_campaign","utm_term","utm_content"].forEach(function (k) {
+      var v = q.get(k);
+      if (v) out[k] = v.slice(0, 80);
+    });
+    if (q.get("gclid")) out.gclid = q.get("gclid").slice(0, 80);
+    if (q.get("fbclid")) out.fbclid = q.get("fbclid").slice(0, 80);
+    return out;
+  }
+
+  // Compute current-visit source. UTM wins over referrer when present.
+  function computeSource(refHost, utm) {
+    var classified = classifyRef(refHost);
+    var channel = utm.utm_medium || classified.channel;
+    var source = utm.utm_source || classified.source;
+    if (utm.gclid && !utm.utm_medium) { channel = "cpc"; source = source || "google"; }
+    if (utm.fbclid && !utm.utm_medium) { channel = channel === "direct" ? "social" : channel; source = source || "facebook"; }
+    return { channel: channel, source: source, campaign: utm.utm_campaign || null };
+  }
+
+  // First-touch: persist the very first acquisition source per browser.
+  // Read once; only write if not already set.
+  function firstTouch(current, landing) {
+    var existing = null;
+    try {
+      var raw = localStorage.getItem(FIRST_TOUCH_KEY);
+      if (raw) existing = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (existing) return existing;
+    var rec = {
+      channel: current.channel,
+      source: current.source,
+      campaign: current.campaign,
+      landing: landing,
+      ts: Date.now(),
+    };
+    try { localStorage.setItem(FIRST_TOUCH_KEY, JSON.stringify(rec)); } catch (e) { /* ignore */ }
+    return rec;
+  }
   // ipwho.is: free, no key, HTTPS, returns ip + country + city + region + connection.isp.
   // Geo is best-effort: free databases (MaxMind / IP2Location) tag CGNAT exits to
   // the ISP's POP city, not the user. Expect "approx" accuracy especially on
@@ -149,9 +214,34 @@
 
   // ---- 1) page_load: rich one-time profile ----
   var conn = navigator.connection || {};
+  var refRaw = document.referrer || null;
+  var refHost = null;
+  if (refRaw) {
+    try { refHost = new URL(refRaw).hostname; } catch (e) { refHost = null; }
+  }
+  var utm = parseUtm();
+  var src = computeSource(refHost, utm);
+  var landing = location.pathname + (location.search || "");
+  var first = firstTouch(src, landing);
   send({
     type: "page_load",
-    ref: document.referrer || null,
+    ref: refRaw,
+    src_channel: src.channel,
+    src_source: src.source,
+    src_campaign: src.campaign,
+    utm_source: utm.utm_source || null,
+    utm_medium: utm.utm_medium || null,
+    utm_campaign: utm.utm_campaign || null,
+    utm_term: utm.utm_term || null,
+    utm_content: utm.utm_content || null,
+    gclid: utm.gclid || null,
+    fbclid: utm.fbclid || null,
+    landing: landing,
+    first_channel: first.channel,
+    first_source: first.source,
+    first_campaign: first.campaign,
+    first_landing: first.landing,
+    first_ts: first.ts,
     ua: navigator.userAgent,
     lang: navigator.language,
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
