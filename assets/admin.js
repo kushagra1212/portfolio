@@ -170,6 +170,12 @@
           ref: null,
           touch: false,
           vw: 0, sw: 0,
+          src_channel: null,
+          src_source: null,
+          src_campaign: null,
+          first_channel: null,
+          first_source: null,
+          landing: null,
         };
       }
       var bucket = map[s];
@@ -185,6 +191,12 @@
         bucket.tz = e.tz;
         bucket.lang = e.lang;
         bucket.net = e.net_type;
+        bucket.src_channel = e.src_channel || null;
+        bucket.src_source = e.src_source || null;
+        bucket.src_campaign = e.src_campaign || null;
+        bucket.first_channel = e.first_channel || null;
+        bucket.first_source = e.first_source || null;
+        bucket.landing = e.landing || null;
       }
     });
     Object.keys(map).forEach(function (k) {
@@ -447,6 +459,62 @@
     renderBars("referrers", rows);
   }
 
+  // Traffic source: channel · source (one row per session). Falls back to
+  // referrer hostname for old events that pre-date the classifier.
+  function renderTrafficSource(events) {
+    var sessions = bySession(events);
+    var counts = {};
+    Object.keys(sessions).forEach(function (s) {
+      var sess = sessions[s];
+      var ch = sess.src_channel;
+      var src = sess.src_source;
+      if (!ch) {
+        // Legacy event — derive from raw ref
+        var host = refOf(sess.ref);
+        ch = host === "direct" ? "direct" : "referral";
+        src = host;
+      }
+      var k = ch + " · " + (src || "?");
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    var rows = Object.keys(counts).map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+    renderBars("trafficSource", rows);
+  }
+
+  // Campaigns: utm_campaign rollup. Skips sessions without a campaign.
+  function renderCampaigns(events) {
+    var sessions = bySession(events);
+    var counts = {};
+    var any = false;
+    Object.keys(sessions).forEach(function (s) {
+      var c = sessions[s].src_campaign;
+      if (!c) return;
+      any = true;
+      counts[c] = (counts[c] || 0) + 1;
+    });
+    if (!any) {
+      $("campaigns").innerHTML = '<div class="empty">no tagged campaigns yet — share links with <code>?utm_source=…&amp;utm_campaign=…</code></div>';
+      return;
+    }
+    var rows = Object.keys(counts).map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+    renderBars("campaigns", rows);
+  }
+
+  // Landing page: which URL each session entered on.
+  function renderLandingPages(events) {
+    var sessions = bySession(events);
+    var counts = {};
+    Object.keys(sessions).forEach(function (s) {
+      var l = sessions[s].landing || "/";
+      counts[l] = (counts[l] || 0) + 1;
+    });
+    var rows = Object.keys(counts).map(function (k) { return [k, counts[k]]; })
+      .sort(function (a, b) { return b[1] - a[1]; });
+    renderBars("landings", rows);
+  }
+
   function renderSessions(events) {
     var sessions = bySession(events);
     var sids = Object.keys(sessions);
@@ -464,11 +532,14 @@
       if (hadCta || hadDeep || hadRepl) badge = '<span class="badge engaged">engaged</span>';
       else if (sess.events.length <= 2) badge = '<span class="badge bounce">bounce</span>';
       else badge = '<span class="badge">' + sess.events.length + 'e</span>';
+      var srcLabel = sess.src_channel
+        ? sess.src_channel + (sess.src_source ? "/" + sess.src_source : "")
+        : refOf(sess.ref);
       html += '<div class="session-row" data-sid="' + esc(s) + '">'
         + '<div class="sid">' + esc(s.slice(0, 8)) + '</div>'
         + '<div class="meta">'
           + dfmt(sess.first) + ' · ' + esc(browserOf(sess.ua)) + ' · ' + esc(deviceOf(sess))
-          + ' · ' + esc(refOf(sess.ref)) + ' · ' + durFmt(dur)
+          + ' · ' + esc(srcLabel) + ' · ' + durFmt(dur)
         + '</div>'
         + badge
         + '</div>';
@@ -516,12 +587,22 @@
 
   function openSessionModal(sid, sess) {
     modalTitle.textContent = "Session " + sid.slice(0, 16);
+    var srcLabel = sess.src_channel
+      ? sess.src_channel + (sess.src_source ? "/" + sess.src_source : "")
+        + (sess.src_campaign ? " (" + sess.src_campaign + ")" : "")
+      : refOf(sess.ref);
+    var firstLabel = (sess.first_channel && sess.first_channel !== sess.src_channel)
+      ? " · first-touch: " + sess.first_channel + (sess.first_source ? "/" + sess.first_source : "")
+      : "";
+    var landingLabel = sess.landing ? " · landed on " + sess.landing : "";
     var head = '<div style="color: var(--fg-dim); margin-bottom: 0.7em; font-size: 0.85em;">'
       + esc(browserOf(sess.ua)) + " · " + esc(deviceOf(sess))
-      + " · " + esc(refOf(sess.ref))
+      + " · " + esc(srcLabel)
       + " · " + (sess.vw || "?") + "×" + (sess.tz || "")
       + " · " + sess.events.length + " events"
       + " · " + durFmt(sess.last - sess.first)
+      + esc(landingLabel)
+      + esc(firstLabel)
       + "</div>";
     var tline = sess.events.map(function (e) {
       return '<div class="timeline-row">'
@@ -554,6 +635,9 @@
     renderReplCmds(inRange);
     renderDevices(inRange);
     renderReferrers(inRange);
+    renderTrafficSource(inRange);
+    renderCampaigns(inRange);
+    renderLandingPages(inRange);
     renderSessions(inRange);
     renderLiveFeed(inRange);
   }
