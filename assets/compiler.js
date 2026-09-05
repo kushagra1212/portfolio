@@ -54,7 +54,7 @@
     "flow-wing": {
       title: "Flow-Wing — programming language", tag: "C++ · LLVM",
       url: "https://github.com/kushagra1212/Flow-Wing",
-      site: "https://flowwing.frii.site/",
+      site: "https://flowwing.kushagrarathore.in/",
       lines: [
         "Experimental language: static + dynamic typing in one.",
         "Custom Lexer, Parser, IR. AOT + JIT compilers. REPL.",
@@ -112,7 +112,7 @@
     "/;      flowwing career.fg -o career && ./career",
     "/;",
     "/;  The portfolio's REPL sends `run` to the same Flow-Wing",
-    "/;  engine that powers flowwing.frii.site (POST /run).",
+    "/;  engine that powers flowwing.kushagrarathore.in (POST /run).",
     "/; =========================================================",
     "",
     "fun whoami() -> nthg {",
@@ -139,7 +139,7 @@
     "fun contact() -> nthg {",
     "    println(\"email    : kushagrarathore002@gmail.com\")",
     "    println(\"github   : github.com/kushagra1212\")",
-    "    println(\"flow-wing: https://flowwing.frii.site\")",
+    "    println(\"flow-wing: https://flowwing.kushagrarathore.in\")",
     "}",
     "",
     "fun fg_main() -> nthg {",
@@ -287,7 +287,7 @@
       });
       blank();
       line(["Real Flow-Wing — compiles & runs on ",
-        ["o-acc", "flowwing.frii.site", "https://flowwing.frii.site/"], "."]);
+        ["o-acc", "flowwing.kushagrarathore.in", "https://flowwing.kushagrarathore.in/"], "."]);
       line([["o-dim", "try "], ["o-acc", "run println(\"hi from flow-wing\")"]]);
     },
 
@@ -440,7 +440,7 @@
     }
   }
   /* ---------- real Flow-Wing: POST to the engine that powers
-     flowwing.frii.site. Works same-origin (behind that nginx);
+     flowwing.kushagrarathore.in. Works same-origin (behind that nginx);
      falls back to the local sandbox elsewhere, clearly labelled. */
   function runFlowWing(src) {
     src = src.trim();
@@ -574,7 +574,7 @@
   /* ---------- boot banner ---------- */
   line([["o-acc", "Flow-Wing"], ["o-dim", " REPL · "], ["o-dim", "C++/LLVM"]]);
   line([["o-dim", "career data lives in "], ["o-kw", "career.fg"], ["o-dim", " ("], ["o-acc", "source"], ["o-dim", "). "], ["o-acc", "run"], ["o-dim", " executes real Flow-Wing"]]);
-  line([["o-dim", "via the same engine as "], ["o-acc", "flowwing.frii.site", "https://flowwing.frii.site/"], ["o-dim", " (local sandbox if offline)."]]);
+  line([["o-dim", "via the same engine as "], ["o-acc", "flowwing.kushagrarathore.in", "https://flowwing.kushagrarathore.in/"], ["o-dim", " (local sandbox if offline)."]]);
   blank();
   line([["o-dim", "type "], ["o-acc", "help"], ["o-dim", " · "], ["o-acc", "source"], ["o-dim", " · "], ["o-acc", "run println(\"hi\")"], ["o-dim", " · "], ["o-acc", "sudo hire"]]);
   blank();

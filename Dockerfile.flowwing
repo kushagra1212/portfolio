@@ -1,0 +1,16 @@
+FROM kushagra711/flowwing-base:latest AS builder
+ARG CACHEBUST=1
+WORKDIR /build
+RUN curl -L https://github.com/kushagra1212/Flow-Wing/tarball/main | tar -xz --wildcards "*/flowwing-explorer/flow-wing-website/*" &&     mv kushagra1212-Flow-Wing-*/flowwing-explorer/flow-wing-website/* ./ &&     rm -rf kushagra1212-Flow-Wing-* &&     flowwing server.fg -o ./fg-server
+
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN mkdir -p /tmp/submissions && chmod 777 /tmp/submissions
+COPY --from=builder /build/fg-server ./fg-server
+COPY --from=builder /build/template.html ./template.html
+COPY --from=builder /build/assets ./assets
+RUN chmod -R 755 /app
+EXPOSE 8080
+CMD ["./fg-server"]

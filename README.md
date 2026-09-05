@@ -1,8 +1,8 @@
 # Portfolio — Kushagra Rathore
 
-Live: https://kushagra.frii.site
+Live: https://kushagrarathore.in
 
-Served by [Flow-Wing](https://flowwing.frii.site), the C++/LLVM compiler.
+Served by [Flow-Wing](https://flowwing.kushagrarathore.in), the C++/LLVM compiler.
 One HTML file, CSS, JS. No build step, no framework.
 
 ## Contact
