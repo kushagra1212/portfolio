@@ -1,0 +1,9 @@
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl gnupg ca-certificates build-essential tar pkg-config libssl-dev && \
+    install -m 0755 -d /etc/apt/keyrings && \
+    curl -fsSL https://kushagra1212.github.io/Flow-Wing/flowwing.gpg.key | gpg --dearmor -o /etc/apt/keyrings/flowwing.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/flowwing.gpg] https://kushagra1212.github.io/Flow-Wing/ ./" | tee /etc/apt/sources.list.d/flowwing.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends flowwing

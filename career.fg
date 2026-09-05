@@ -8,7 +8,7 @@
 /;      flowwing career.fg -o career && ./career
 /;
 /;  The portfolio's REPL sends `run` to the same Flow-Wing
-/;  engine that powers flowwing.frii.site (POST /run), so
+/;  engine that powers flowwing.kushagrarathore.in (POST /run), so
 /;  when the site is served behind that origin the terminal
 /;  is genuinely handled by Flow-Wing — not a fake shell.
 /; =========================================================
@@ -37,7 +37,7 @@ fun impact() -> nthg {
 fun contact() -> nthg {
     println("email    : kushagrarathore002@gmail.com")
     println("github   : github.com/kushagra1212")
-    println("flow-wing: https://flowwing.frii.site")
+    println("flow-wing: https://flowwing.kushagrarathore.in")
 }
 
 fun fg_main() -> nthg {

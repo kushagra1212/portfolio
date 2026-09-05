@@ -1,0 +1,17 @@
+FROM kushagra711/flowwing-base:latest AS builder
+ARG CACHEBUST=1
+WORKDIR /build
+RUN curl -L https://github.com/kushagra1212/portfolio/tarball/main | tar -xz --strip-components=1 &&     flowwing server.fg -o ./portfolio-server
+
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io ca-certificates libssl3 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+RUN mkdir -p /tmp/submissions && chmod 777 /tmp/submissions
+COPY --from=builder /build/portfolio-server ./portfolio-server
+COPY --from=builder /build/index.html ./index.html
+COPY --from=builder /build/assets ./assets
+COPY --from=builder /build/career.fg ./career.fg
+RUN chmod -R 755 /app
+EXPOSE 8080
+ENTRYPOINT ["sh", "-c", "./portfolio-server \"$MONGO_URI\" \"$ADMIN_TOKEN\""]
