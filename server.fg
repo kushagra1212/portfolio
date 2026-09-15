@@ -20,6 +20,18 @@
 /;
 /;  Then open:   http://127.0.0.1:8080
 /;               http://127.0.0.1:8080/admin/<token>
+/;
+/;  ---- Shape of this server ----
+/;
+/;  The accept loop is a TASK, not top-level code:
+/;
+/;      fg_main()  ->  spawn serverLoop(app, events)  ->  spawn handleRequest(...)
+/;
+/;  That matters. `spawn` queues work, and the queue only drains once the
+/;  top-level body has finished. A `while true` loop at the top level never
+/;  finishes, so handlers queued inside it would never run at all. Once the
+/;  loop is itself a task, accept() can suspend it and the scheduler runs the
+/;  queued handlers while it waits for the next connection.
 /; =========================================================
 
 bring vortex
@@ -30,8 +42,190 @@ bring Err
 bring sys
 bring mongo
 
+/; =========================================================
+/;  Start-up caches
+/;
+/;  Filled once in fg_main, read by every handler afterwards. index.html and
+/;  admin.html used to be read from disk on EVERY request, which cost a file
+/;  open, a full read and a fresh garbage-collected string each time. They do
+/;  not change while the process runs, so they are read once.
+/;
+/;  Globals on purpose: a spawned task can read them without them being copied
+/;  into every argument block.
+/; =========================================================
+var gIndexHtml: str = ""
+var gAdminHtml: str = ""
+var gAdminPathPrefix: str = ""
+var gAdminEventsPath: str = ""
+var gCurrentDir: str = "."
+
+/; Read a file once at start-up. A missing file is a warning, not a crash —
+/; the matching route then answers 500 instead of the server refusing to boot.
+fun preload(path: str, what: str) -> str {
+    var body: str, e: Err::Result = file::readText(path)
+    if Err::isErr(e) {
+        io::printErrorLogln("could not preload " + what + " (" + path + ")", "yellow")
+        return ""
+    }
+    io::printLogln("cached " + what + " (" + String(text::length(body)) + " bytes)", "green")
+    return body
+}
+
+fun mimeFor(p: text::Text) -> str {
+    var contentType: str = "application/octet-stream"
+    if p.endsWith(".css") {
+        contentType = "text/css; charset=utf-8"
+    } else if p.endsWith(".js") {
+        contentType = "text/javascript; charset=utf-8"
+    } else if p.endsWith(".svg") {
+        contentType = "image/svg+xml"
+    } else if p.endsWith(".png") {
+        contentType = "image/png"
+    } else if p.endsWith(".webmanifest") {
+        contentType = "application/manifest+json"
+    } else if p.endsWith(".ico") {
+        contentType = "image/x-icon"
+    } else if p.endsWith(".html") {
+        contentType = "text/html; charset=utf-8"
+    }
+    return contentType
+}
+
+/; =========================================================
+/;  GET /admin/<token>/events
+/;
+/;  This used to build one giant string:
+/;
+/;      arr = arr + s          /; inside a 2000-iteration loop
+/;
+/;  Every `+` allocates a NEW string holding everything so far, so 2000
+/;  documents of ~200 bytes allocate and copy on the order of 400 MB in total
+/;  just to produce a 400 KB reply — and the collector has to walk all of it.
+/;
+/;  Streaming writes each document straight to the socket instead. Nothing
+/;  larger than one document is ever held in memory, and the cost becomes
+/;  linear in the number of documents.
+/; =========================================================
+fun sendEvents(res: vortex::Response, events: mongo::Collection) -> nthg {
+    var allFilter: str = "{}"
+    var lim: int64 = 2000
+    var cur: mongo::Cursor = events.find(allFilter, lim)
+
+    res.status(200).streamBegin("application/json")
+    res.streamWrite("[")
+
+    var s: str = cur.next()
+    var first: bool = true
+    while s != "" {
+        if first {
+            first = false
+        } else {
+            res.streamWrite(",")
+        }
+        res.streamWrite(s)
+        s = cur.next()
+    }
+
+    res.streamWrite("]")
+    res.streamEnd()
+    cur.close()
+}
+
+/; =========================================================
+/;  One request. Runs as its own task.
+/;
+/;  Routes are ordered by how often they are hit, so the common case does the
+/;  fewest comparisons. `new text::Text(path)` is built only in the /assets/
+/;  branch — it used to be allocated for every request, including "/".
+/; =========================================================
+fun handleRequest(req: vortex::Request, res: vortex::Response,
+                  events: mongo::Collection) -> nthg {
+    var method: str = req.getMethod()
+    var path: str = req.getPath()
+
+    /; === GET / -> the portfolio itself (served from memory) ===
+    if method == "GET" && path == "/" {
+        if gIndexHtml == "" {
+            res.status(500).header("Content-Type", "text/html").send("<h1>Missing index.html</h1>")
+        } else {
+            res.status(200).header("Content-Type", "text/html; charset=utf-8").send(gIndexHtml)
+        }
+        return :
+    }
+
+    /; === POST /track -> ingest one event JSON doc ===
+    if method == "POST" && path == "/track" {
+        var body: str = req.getBody()
+        if body == "" {
+            res.status(400).header("Content-Type", "text/plain").send("empty body")
+            return :
+        }
+        if events.insertOne(body) {
+            res.status(204).send("")
+        } else {
+            io::printErrorLogln("track insert failed: " + mongo::lastError(), "red")
+            res.status(500).header("Content-Type", "text/plain").send("track failed")
+        }
+        return :
+    }
+
+    /; === GET /assets/* -> css / js / icons (correct MIME) ===
+    if method == "GET" {
+        var pathAsText: text::Text = new text::Text(path)
+        if pathAsText.startsWith("/assets/") {
+            res.status(200).sendStaticFile(gCurrentDir + pathAsText.get(), mimeFor(pathAsText))
+            return :
+        }
+    }
+
+    /; === GET /admin/<token>/events -> JSON feed of recent events ===
+    if method == "GET" && path == gAdminEventsPath {
+        sendEvents(res, events)
+        return :
+    }
+
+    /; === GET /admin/<token> -> admin dashboard HTML (served from memory) ===
+    if method == "GET" && path == gAdminPathPrefix {
+        if gAdminHtml == "" {
+            res.status(500).header("Content-Type", "text/html").send("<h1>admin page missing</h1>")
+        } else {
+            res.status(200).header("Content-Type", "text/html; charset=utf-8").send(gAdminHtml)
+        }
+        return :
+    }
+
+    /; === GET /career.fg -> the Flow-Wing source, in the open ===
+    if method == "GET" && (path == "/career.fg" || path == "/server.fg") {
+        res.status(200).sendStaticFile(gCurrentDir + path, "text/plain; charset=utf-8")
+        return :
+    }
+
+    /; === everything else ===
+    res.status(404).header("Content-Type", "text/html").send("<h1>404 — not a route in this build</h1>")
+}
+
+/; =========================================================
+/;  The accept loop, as a task.
+/;
+/;  Two spawns matter here, and they do different jobs:
+/;
+/;    spawn serverLoop(...)   lets accept() SUSPEND instead of owning the
+/;                            thread, so queued handlers get to run
+/;    spawn handleRequest(..) returns to accept() at once, so the kernel's
+/;                            backlog keeps draining while a handler works
+/; =========================================================
+fun serverLoop(app: vortex::Server, events: mongo::Collection) -> nthg {
+    while true {
+        var req: vortex::Request, res: vortex::Response = app.accept()
+        if req == null {
+            continue
+        }
+        spawn handleRequest(req, res, events)
+    }
+}
+
 fun fg_main() -> nthg {
-    const CURRENT_DIR: str = file::__DIR__ == "" ? "." : file::__DIR__
+    gCurrentDir = file::__DIR__ == "" ? "." : file::__DIR__
 
     /; ---- read CLI args for prod config ----
     var mongoUri: str = sys::getArg(1)
@@ -44,8 +238,8 @@ fun fg_main() -> nthg {
         adminToken = "dev-admin-token"
         io::printLogln("ADMIN_TOKEN not provided (arg2), using dev fallback", "yellow")
     }
-    var adminPathPrefix: str = "/admin/" + adminToken
-    var adminEventsPath: str = adminPathPrefix + "/events"
+    gAdminPathPrefix = "/admin/" + adminToken
+    gAdminEventsPath = gAdminPathPrefix + "/events"
 
     /; ---- open mongo BEFORE binding the socket (libmongoc init plays poorly
     /;      with whatever vortex sets up at listen time) ----
@@ -59,6 +253,10 @@ fun fg_main() -> nthg {
     var events: mongo::Collection = mc.getCollection(dbName, collName)
     io::printLogln("mongo connected: " + mongoUri, "green")
 
+    /; ---- read the pages that never change, once ----
+    gIndexHtml = preload(gCurrentDir + "/index.html", "index.html")
+    gAdminHtml = preload(gCurrentDir + "/assets/admin.html", "admin.html")
+
     /; ---- now bind the vortex server ----
     var app: vortex::Server = new vortex::Server()
     var err: Err::Result = app.listen(8080)
@@ -70,103 +268,9 @@ fun fg_main() -> nthg {
 
     io::printLogln("The Career Compiler — served by Flow-Wing at http://127.0.0.1:8080", "cyan")
 
-    while true {
-        var req: vortex::Request, res: vortex::Response = app.accept()
-        if req == null {
-            continue
-        }
-
-        var method: str = req.getMethod()
-        var path: str = req.getPath()
-        var pathAsText: text::Text = new text::Text(path)
-
-        /; === POST /track -> ingest one event JSON doc ===
-        if method == "POST" && path == "/track" {
-            var body: str = req.getBody()
-            if body == "" {
-                res.status(400).header("Content-Type", "text/plain").send("empty body")
-            } else {
-                var ok: bool = events.insertOne(body)
-                if ok {
-                    res.status(204).send("")
-                } else {
-                    var emsg: str = mongo::lastError()
-                    io::printErrorLogln("track insert failed: " + emsg, "red")
-                    res.status(500).header("Content-Type", "text/plain").send("track failed")
-                }
-            }
-        }
-        /; === GET /admin/<token>/events -> JSON feed of recent events ===
-        else if method == "GET" && path == adminEventsPath {
-            var allFilter: str = "{}"
-            var lim: int64 = 2000
-            var cur: mongo::Cursor = events.find(allFilter, lim)
-            var s: str = cur.next()
-            var arr: str = "["
-            var first: bool = true
-            while s != "" {
-                if first {
-                    first = false
-                } else {
-                    arr = arr + ","
-                }
-                arr = arr + s
-                s = cur.next()
-            }
-            arr = arr + "]"
-            cur.close()
-            res.status(200).header("Content-Type", "application/json").send(arr)
-        }
-        /; === GET /admin/<token> -> admin dashboard HTML ===
-        else if method == "GET" && path == adminPathPrefix {
-            var adminPath: str = CURRENT_DIR + "/assets/admin.html"
-            var html: str, herr: Err::Result = file::readText(adminPath)
-            if Err::isErr(herr) {
-                res.status(500).header("Content-Type", "text/html").send("<h1>admin page missing</h1>")
-            } else {
-                res.status(200).header("Content-Type", "text/html; charset=utf-8").send(html)
-            }
-        }
-        /; === GET / -> the portfolio itself ===
-        else if method == "GET" && path == "/" {
-            var indexPath: str = CURRENT_DIR + "/index.html"
-            var content: str, rerr: Err::Result = file::readText(indexPath)
-            if Err::isErr(rerr) {
-                res.status(500).header("Content-Type", "text/html").send("<h1>Missing index.html</h1>")
-            } else {
-                res.status(200).header("Content-Type", "text/html; charset=utf-8").send(content)
-            }
-        }
-        /; === GET /assets/* -> css / js / icons (correct MIME) ===
-        else if method == "GET" && pathAsText.startsWith("/assets/") {
-            var assetPath: str = CURRENT_DIR + pathAsText.get()
-            var contentType: str = "application/octet-stream"
-            if pathAsText.endsWith(".css") {
-                contentType = "text/css; charset=utf-8"
-            } else if pathAsText.endsWith(".js") {
-                contentType = "text/javascript; charset=utf-8"
-            } else if pathAsText.endsWith(".svg") {
-                contentType = "image/svg+xml"
-            } else if pathAsText.endsWith(".png") {
-                contentType = "image/png"
-            } else if pathAsText.endsWith(".webmanifest") {
-                contentType = "application/manifest+json"
-            } else if pathAsText.endsWith(".ico") {
-                contentType = "image/x-icon"
-            } else if pathAsText.endsWith(".html") {
-                contentType = "text/html; charset=utf-8"
-            }
-            res.status(200).sendStaticFile(assetPath, contentType)
-        }
-        /; === GET /career.fg -> the Flow-Wing source, in the open ===
-        else if method == "GET" && (path == "/career.fg" || path == "/server.fg") {
-            res.status(200).sendStaticFile(CURRENT_DIR + path, "text/plain; charset=utf-8")
-        }
-        /; === everything else ===
-        else {
-            res.status(404).header("Content-Type", "text/html").send("<h1>404 — not a route in this build</h1>")
-        }
-    }
+    /; Queues the loop. It starts when fg_main returns and the top-level body
+    /; finishes — which is exactly why the loop is not written inline here.
+    spawn serverLoop(app, events)
 }
 
 fg_main()
