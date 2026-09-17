@@ -352,3 +352,125 @@ h2 small {
 .visitor-row.you { border-color: var(--accent); }
 .visitor-row.unknown .flag { color: var(--fg-faint); }
 .visitor-row.unknown .ip { color: var(--fg-faint); }
+
+/* ==========================================================================
+   UX layer
+   ==========================================================================
+   Appended, not merged into the rules above, so nothing that already works
+   changes behaviour. Everything here is either a new selector or a property
+   the base rules never set.
+
+   The dashboard is 13 panels tall. Every fix below follows from that one fact:
+   the controls scroll away, panel titles blur together, and a refresh that
+   swaps the DOM silently gives no sign it happened.
+   ========================================================================== */
+
+/* 1. The toolbar follows you down the page.
+      Changing the range used to mean scrolling back to the top first. */
+.page-head {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(10px) saturate(1.2);
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 1.5rem;
+  padding-block: 0.9rem;
+}
+@supports not (backdrop-filter: blur(4px)) { .page-head { background: var(--bg); } }
+
+.page-head h1 { letter-spacing: -0.01em; }
+.page-head h1 small { font-variant-numeric: tabular-nums; }
+
+/* 2. Controls read as controls. They were unstyled browser defaults. */
+.controls { gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.controls select,
+.controls button {
+  background: var(--panel); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 7px;
+  padding: 0.4rem 0.7rem; font: inherit; font-size: 0.82rem;
+  cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+}
+.controls select:hover,
+.controls button:hover { border-color: var(--accent); color: var(--accent); }
+.controls button:active { transform: translateY(1px); }
+.controls label.auto {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  color: var(--fg-dim); font-size: 0.8rem; cursor: pointer;
+  user-select: none; white-space: nowrap;
+}
+.controls input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+/* Keyboard users could not see where they were. */
+.controls :is(select, button, input):focus-visible,
+.panel :is(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px;
+}
+
+/* 3. Status says what is happening, in a colour that means it. */
+#status { font-size: 0.78rem; color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+#status.loading { color: var(--warn); }
+#status.error   { color: #e06c75; }
+#status.ok      { color: var(--accent); }
+
+/* 4. Panels get a real hierarchy: a titled band, then the data. */
+.panel {
+  border-radius: 12px;
+  transition: border-color .18s, transform .18s;
+}
+.panel:hover { border-color: var(--border); }
+.panel > h2 {
+  font-size: 0.82rem; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--fg-dim);
+  padding-bottom: 0.6rem; margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+.panel > h2 small { text-transform: none; letter-spacing: 0; color: var(--fg-faint); }
+
+/* 5. Big numbers line up when they change. Proportional digits made the
+      stat row jitter on every auto-refresh. */
+.grid.stats .stat b,
+.grid.stats b,
+.bars .n,
+.visitor-list, .session-list { font-variant-numeric: tabular-nums; }
+
+/* 6. Something to look at while the first fetch is in flight. */
+.panel.is-loading { position: relative; min-height: 96px; }
+.panel.is-loading::after {
+  content: ""; position: absolute; inset: 0; border-radius: 12px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.045), transparent);
+  background-size: 200% 100%; animation: adminShimmer 1.2s linear infinite;
+}
+@keyframes adminShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* 7. An empty panel should say so rather than look broken. */
+.bars:empty::before,
+.visitor-list:empty::before,
+.session-list:empty::before,
+.contact-grid:empty::before,
+.live:empty::before {
+  content: "No data in this range";
+  display: block; padding: 1.1rem 0;
+  color: var(--fg-faint); font-size: 0.82rem; font-style: italic;
+}
+
+/* 8. Rows respond to the pointer, so clickable ones look clickable. */
+.bars > div { border-radius: 5px; padding-inline: 0.35rem; transition: background .12s; }
+.bars > div:hover { background: rgba(255,255,255,.035); }
+
+/* 9. The live feed is the one place you watch rather than read. */
+.live { scrollbar-width: thin; }
+.live > div:first-child { animation: adminNew .5s ease-out; }
+@keyframes adminNew { from { background: rgba(93,187,156,.13); } to { background: transparent; } }
+
+/* 10. Phone layout. The controls used to overflow the viewport. */
+@media (max-width: 720px) {
+  .page-head { position: static; }
+  .page-head h1 { font-size: 1.05rem; }
+  .controls { width: 100%; }
+  .controls select, .controls button { flex: 1 1 auto; }
+  .panel { padding: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.is-loading::after, .live > div:first-child { animation: none; }
+  .panel, .controls button { transition: none; }
+}

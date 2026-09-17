@@ -643,7 +643,9 @@
   }
 
   function load() {
-    statusEl.textContent = "loading…";
+    statusEl.textContent = "loading\u2026";
+    statusEl.className = "loading";          /* colours it, see admin.css UX layer */
+    document.querySelectorAll(".panel").forEach(function (p) { p.classList.add("is-loading"); });
     fetch(location.pathname + "/events")
       .then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -652,11 +654,15 @@
       .then(function (j) {
         all = (j || []).map(flattenExtJson);
         all.sort(function (a, b) { return b.ts - a.ts; });
-        statusEl.textContent = "ok";
+        statusEl.textContent = "updated " + new Date().toLocaleTimeString();
+        statusEl.className = "ok";
+        document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("is-loading"); });
         renderAll();
       })
       .catch(function (err) {
         statusEl.textContent = "error: " + err.message;
+        statusEl.className = "error";
+        document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("is-loading"); });
       });
   }
 
