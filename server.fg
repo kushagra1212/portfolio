@@ -59,14 +59,6 @@ var gAdminPathPrefix: str = ""
 var gAdminEventsPath: str = ""
 var gCurrentDir: str = "."
 
-/; How far back the admin dashboard can see, in seconds. 7 days.
-/;
-/; This is a correctness constraint, not a preference. sendEvents caps the reply
-/; at 2000 documents and cannot sort, so this window has to stay small enough
-/; that a week of traffic never reaches that cap. Widen it and the oldest-2000
-/; truncation returns.
-var gEventsWindowSecs: int = 604800
-
 /; Read a file once at start-up. A missing file is a warning, not a crash —
 /; the matching route then answers 500 instead of the server refusing to boot.
 fun preload(path: str, what: str) -> str {
@@ -115,28 +107,30 @@ fun mimeFor(p: text::Text) -> str {
 /;  linear in the number of documents.
 /; =========================================================
 fun sendEvents(res: vortex::Response, events: mongo::Collection) -> nthg {
-    /; Ask for a TIME WINDOW, not "everything, capped at 2000".
+    /; findSorted, not find. The sort is what makes `lim` mean "the 2000 most
+    /; recent" rather than "the 2000 oldest".
     /;
-    /; mongo::Collection.find(filter, limit) has no sort parameter. The C++ behind
-    /; it builds its query options with a limit and nothing else, so Mongo answers
-    /; in natural order — which is oldest first.
+    /; find(filter, limit) cannot express an order, so Mongo answers in natural
+    /; order — roughly insertion order, oldest first. That stayed invisible while
+    /; this collection held under 2000 documents, because "the oldest 2000" and
+    /; "all of them" were the same set. Past 2000 the cap began returning only the
+    /; oldest 2000; admin.js:79-84 then dropped everything outside the selected
+    /; range, which was all of them, and the dashboard went blank while /track
+    /; kept answering 204. The reply measured 642801 bytes — about 2000 documents
+    /; of ~321 bytes — so the cap was saturated exactly.
     /;
-    /; That was harmless while the collection held fewer than 2000 documents,
-    /; because "the oldest 2000" and "all of them" were the same set. Once it grew
-    /; past 2000 the cap started returning only the OLDEST 2000. admin.js:79-84
-    /; then drops everything older than the selected range, which discarded every
-    /; one of them. The dashboard went blank while events were still being stored
-    /; correctly — /track kept answering 204. The reply measured 642801 bytes,
-    /; about 2000 documents of ~321 bytes, so the cap was saturated exactly.
+    /; An explicit newest-first sort removes the guesswork. Truncation now drops
+    /; the OLDEST events, the only end that is safe to lose, and every option in
+    /; the range selector works — including "all time", which a server-side date
+    /; window would have silently capped.
     /;
-    /; Bounding on `ts` fixes it without needing a sort: a week of traffic is far
-    /; below 2000 documents, so the limit never binds and what comes back is
-    /; current. The real fix is a sort parameter in the mongo module — until that
-    /; exists, this window must stay small enough that the cap cannot bind.
-    var cutoffMs: int64 = Int64(sys::timestamp() - gEventsWindowSecs) * 1000
-    var allFilter: str = "{\"ts\": {\"$gte\": " + String(cutoffMs) + "}}"
+    /; Requires mongo::Collection.findSorted, added after 1.0.14. Against an older
+    /; compiler this fails with FunctionNotFound on this line — a build-time
+    /; error, not a runtime surprise.
+    var allFilter: str = "{}"
     var lim: int64 = 2000
-    var cur: mongo::Cursor = events.find(allFilter, lim)
+    var newestFirst: str = "{\"ts\": -1}"
+    var cur: mongo::Cursor = events.findSorted(allFilter, lim, newestFirst)
 
     res.status(200).streamBegin("application/json")
     res.streamWrite("[")
